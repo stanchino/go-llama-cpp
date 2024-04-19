@@ -1,8 +1,8 @@
 package tokenizer
 
 /*
-#cgo CFLAGS: -I../llama.cpp/common -I../llama.cpp -I.. -I.
-#cgo CXXFLAGS: -I../llama.cpp/common -I../llama.cpp -I.. -I.
+#cgo CFLAGS: -I../llama-src -I../llama-src/common -I.. -I.
+#cgo CXXFLAGS: -I../llama-src -I../llama-src/common -I.. -I.
 #cgo darwin CXXFLAGS: -std=c++11
 #include <stdlib.h>
 #include "llama.h"

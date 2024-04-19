@@ -1,4 +1,4 @@
-.PHONY: binding.o libbinding.a build clean
+.PHONY: binding.o libbinding.a build clean sources
 
 default: build
 
@@ -26,12 +26,18 @@ endif
 libllama.a:
 	LLAMA_METAL_EMBED_LIBRARY=${LAMA_METAL_EMBED} $(MAKE) -C llama.cpp libllama.a $(EXTRA_LLAMA_TARGETS)
 
-build: libllama.a
+build: libllama.a sources
 	go build options.go go_llama.go
 	go build tokenizer/*.go
 	go build predictor/*.go
 
+sources:
+	mkdir -p ./llama-src/common
+	cp ./llama.cpp/*.h ./llama-src/
+	cp ./llama.cpp/common/*.h ./llama-src/common/
+
 clean:
 	rm -rf lib/*.o
 	rm -rf lib/*.a
+	rm -rf llama-src
 	$(MAKE) -C llama.cpp clean
