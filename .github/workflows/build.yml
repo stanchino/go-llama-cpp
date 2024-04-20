@@ -57,7 +57,7 @@ jobs:
         path: lib
     - uses: actions/download-artifact@v4
       with:
-        name: libllama_arm64.a
+        name: libllama_x86_64.a
         path: lib
     - uses: EndBug/add-and-commit@v9
       with:
