@@ -1,8 +1,8 @@
-.PHONY: binding.o libbinding.a build clean sources
+.PHONY: binding.o libbinding.a build clean includes
 
 default: build
 
-# llama.cpp header files
+# necessary llama.cpp header files
 HEADERS = common.h llama.h ggml.h ggml-backend.h ggml-alloc.h log.h sampling.h grammar-parser.h
 
 # keep standard at C11 and C++11
@@ -34,8 +34,10 @@ libllama.a:
 	LLAMA_METAL_EMBED_LIBRARY=${LAMA_METAL_EMBED} $(MAKE) -C llama.cpp libllama.a $(EXTRA_LLAMA_TARGETS)
 	cp llama.cpp/libllama.a lib/libllama_${UNAME_M}.a
 
-build: libllama.a $(foreach h,$(HEADERS),includes/$(h))
+build: libllama.a includes
 	go build ./...
+
+includes: $(foreach h,$(HEADERS),includes/$(h))
 
 includes/%: %
 	cp $^ includes
