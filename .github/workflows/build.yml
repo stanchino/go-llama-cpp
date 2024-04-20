@@ -3,8 +3,10 @@ name: C/C++ CI
 on:
   push:
     branches: [ "main" ]
+    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', '**/*.go']
   pull_request:
     branches: [ "main" ]
+    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', '**/*.go']
 
 jobs:
   macOS-latest:
@@ -22,6 +24,10 @@ jobs:
         submodules: true
     - name: make
       run: make
+    - uses: actions/upload-artifact@v4
+      with:
+        path: lib/llama_arm64.a
+        name: llama_arm64.a
   ubuntu-latest:
     runs-on: ubuntu-latest
     steps:
@@ -33,6 +39,10 @@ jobs:
         submodules: true
     - name: make
       run: make
+    - uses: actions/upload-artifact@v4
+      with:
+        path: lib/llama_x86_64.a
+        name: llama_x86_64.a
   release:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
@@ -40,6 +50,15 @@ jobs:
       - macOS-latest
       - ubuntu-latest
     steps:
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
+      with:
+        name: llama_x86_64.a
+        path: lib
+    - uses: actions/download-artifact@v4
+      with:
+        name: llama_arm64.a
+        path: lib
     - uses: EndBug/add-and-commit@v9
       with:
         add: 'lib'
