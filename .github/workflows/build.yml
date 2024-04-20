@@ -16,7 +16,7 @@ jobs:
         brew update
     - uses: actions/setup-go@v5.0.0
       with:
-        go_version: 1.22
+        go-version: 1.22
     - uses: actions/checkout@v4
       with:
         submodules: true
@@ -27,7 +27,7 @@ jobs:
     steps:
     - uses: actions/setup-go@v5.0.0
       with:
-        go_version: 1.22
+        go-version: 1.22
     - uses: actions/checkout@v4
       with:
         submodules: true
