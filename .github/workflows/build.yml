@@ -65,9 +65,11 @@ jobs:
       with:
         name: libllama_x86_64.a
         path: lib
-    - name: Semver Relase
+    - name: Semver Release
       id: semver
       uses: huggingface/semver-release-action@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - uses: EndBug/add-and-commit@v9
       with:
         add: 'lib includes'
