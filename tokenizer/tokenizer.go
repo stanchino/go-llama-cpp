@@ -5,6 +5,7 @@ package tokenizer
 #cgo CXXFLAGS: -std=c++11 -I${SRCDIR}/../ -I${SRCDIR}/../includes/
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "go_llama.h"
 #include "tokenizer.h"
 */
