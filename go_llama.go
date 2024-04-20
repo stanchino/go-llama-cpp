@@ -1,15 +1,10 @@
 package llama
 
-//go:generate make sources
-
 /*
-#cgo CFLAGS: -I./llama-src -I./llama-src/common -I.
-#cgo CXXFLAGS: -I./llama-src -I./llama-src/common -I.
-#cgo LDFLAGS: -L./llama.cpp -lllama
-#cgo darwin LDFLAGS: -framework Accelerate -framework Foundation -framework Metal -framework MetalKit -framework MetalPerformanceShaders
-#cgo darwin CXXFLAGS: -std=c++11
+#cgo CFLAGS: -std=c11 -I${SRCDIR}/includes/
+#cgo CXXFLAGS: -std=c++11 -I${SRCDIR}/includes/
 #include <stdlib.h>
-#include "llama.h"
+#include <stdbool.h>
 #include "go_llama.h"
 */
 import "C"

@@ -1,11 +1,10 @@
 package tokenizer
 
 /*
-#cgo CFLAGS: -I../llama-src -I../llama-src/common -I.. -I.
-#cgo CXXFLAGS: -I../llama-src -I../llama-src/common -I.. -I.
-#cgo darwin CXXFLAGS: -std=c++11
+#cgo CFLAGS: -std=c11 -I${SRCDIR}/../ -I${SRCDIR}/../includes/
+#cgo CXXFLAGS: -std=c++11 -I${SRCDIR}/../ -I${SRCDIR}/../includes/
 #include <stdlib.h>
-#include "llama.h"
+#include <stdbool.h>
 #include "go_llama.h"
 #include "tokenizer.h"
 */
@@ -38,9 +37,9 @@ func (t *Tokenizer) Tokenize(text string) []int {
 }
 
 func (t *Tokenizer) ToString(tokens []int) string {
-    result := make([]C.llama_token, len(tokens))
+    result := make([]C.go_llama_token, len(tokens))
     for i, t := range tokens {
-        result[i] = C.llama_token(t)
+        result[i] = C.go_llama_token(t)
     }
     str := C.go_llama_token_to_piece(t.State, &result[0], C.uint(len(tokens)))
     return C.GoString(str)

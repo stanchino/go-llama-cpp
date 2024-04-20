@@ -1,13 +1,14 @@
 #include "tokenizer.h"
+#include "common.h"
 
 struct tokens_list go_llama_tokenize(void * state_ptr, const char * prompt) {
-    go_llama_state* state = (go_llama_state*) state_ptr;
+    auto state = (go_llama_state*) state_ptr;
     const bool add_bos = llama_should_add_bos_token(llama_get_model(state->ctx));
     std::vector<llama_token> tokens = llama_tokenize(state->ctx, prompt, add_bos);
     unsigned int size = tokens.size();
     struct tokens_list list = {
             size,
-            (int *) malloc(sizeof(int) * size)
+            (go_llama_token *) malloc(sizeof(llama_token) * size)
     };
     for (unsigned int i = 0; i < size; i++) {
         list.tokens[i] = tokens[i];

@@ -1,5 +1,6 @@
 #include "go_llama.h"
 #include "predictor.h"
+#include "common.h"
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <csignal>

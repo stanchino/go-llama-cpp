@@ -1,4 +1,5 @@
 #include "go_llama.h"
+#include "common.h"
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <csignal>
@@ -58,7 +59,7 @@ void* go_llama_init(void * params_ptr) {
     state = new go_llama_state;
     state->model = model;
     state->ctx = ctx;
-    state->ctx_params = cparams;
+    state->ctx_params = go_llama_context_params{&cparams};
     g_params = params;
     return state;
 }
