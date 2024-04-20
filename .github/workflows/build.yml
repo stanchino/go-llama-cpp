@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: Build llama.cpp for different architectures
 
 on:
   push:
@@ -26,8 +26,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/llama_arm64.a
-        name: llama_arm64.a
+        path: lib/libllama_arm64.a
+        name: libllama_arm64.a
   ubuntu-latest:
     runs-on: ubuntu-latest
     steps:
@@ -41,8 +41,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/llama_x86_64.a
-        name: llama_x86_64.a
+        path: lib/libllama_x86_64.a
+        name: libllama_x86_64.a
   release:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
@@ -53,11 +53,11 @@ jobs:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4
       with:
-        name: llama_x86_64.a
+        name: libllama_arm64.a
         path: lib
     - uses: actions/download-artifact@v4
       with:
-        name: llama_arm64.a
+        name: libllama_arm64.a
         path: lib
     - uses: EndBug/add-and-commit@v9
       with:
