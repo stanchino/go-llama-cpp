@@ -3,6 +3,7 @@
 #ifdef __cplusplus
 #include <vector>
 #include <string>
+#include <cstdint>
 #include "go_llama.h"
 extern "C" {
 #endif

@@ -23,7 +23,7 @@ file(GLOB _common_files
         "${_common_path}/*.h"
         "${_common_path}/*.cpp"
 )
-target_sources(common PUBLIC ${_common_files})
+target_sources(common PRIVATE ${_common_files})
 
 get_target_property(_llama_transient_defines llama INTERFACE_COMPILE_DEFINITIONS)
 target_compile_definitions(common PRIVATE "${_llama_transient_defines}")
@@ -35,7 +35,7 @@ add_library(${PROJECT_NAME}
 )
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tokenizer ${CMAKE_CURRENT_SOURCE_DIR}/predictor ${llama_SOURCE_DIR} ${_common_path})
 
-install(TARGETS ${PROJECT_NAME})
+install(TARGETS ${PROJECT_NAME} llama ggml common)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         common
