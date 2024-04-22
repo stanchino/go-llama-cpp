@@ -3,7 +3,7 @@
 #ifdef __cplusplus
 #include <vector>
 #include <string>
-#include "go_llama.h"
+#include "../llama/llama.h"
 extern "C" {
 #endif
 typedef int32_t go_llama_token;

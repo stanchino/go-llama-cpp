@@ -1,6 +1,7 @@
-#include "go_llama.h"
-#include "common.h"
 #include "llama.h"
+#include "../../includes/common.h"
+#include "../../includes/llama.h"
+#include "../util/util.h"
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <csignal>
@@ -19,22 +20,27 @@
 #endif
 
 llama_model * g_model;
-llama_context * g_ctx;
 llama_context_params g_ctx_params;
-gpt_params g_params;
 
 void* go_llama_init(void * params_ptr) {
-    go_llama_params p = *(go_llama_params*)params_ptr;
+    auto p = (go_llama_params*) params_ptr;
     gpt_params params;
-    params.model = p.model;
+    params.model = p->model;
+    if (p->antiprompt != nullptr) {
+        auto antiprompt = (charArray*) p->antiprompt;
+        for (unsigned int i = 0; i < antiprompt->len; i++) {
+            params.antiprompt.emplace_back(antiprompt->data[i]);
+            printf("antiprompt: %s\n", antiprompt->data[i]);
+        }
+    }
     auto mparams = llama_model_params_from_gpt_params(params);
-    mparams.use_mmap = p.use_mmap;
+    mparams.use_mmap = p->use_mmap;
     llama_model * model;
 
     llama_backend_init();
     LOG("%s: load the model and apply lora adapter, if any\n", __func__);
     // TODO: Add support for HF and URL loading
-    model = llama_load_model_from_file(p.model, mparams);
+    model = llama_load_model_from_file(p->model, mparams);
     if (model == nullptr) {
         fprintf(stderr, "%s: error: failed to load model '%s'\n", __func__, params.model.c_str());
         return nullptr;
@@ -61,7 +67,6 @@ void* go_llama_init(void * params_ptr) {
     state->model = model;
     state->ctx = ctx;
     state->ctx_params = go_llama_context_params{&cparams};
-    g_params = params;
     return state;
 }
 

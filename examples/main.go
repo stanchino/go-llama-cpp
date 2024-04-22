@@ -16,11 +16,12 @@ func main() {
 		log.Fatal("You must provide a path to the model file")
 	}
 	l := llama.NewGoLlama(options.Options{
-		ModelName: *modelName,
+		ModelName:   *modelName,
+		AntiPrompts: []string{"<|eot_id|>", "<|user|>"},
 	})
 	defer l.Free()
 	p := predictor.NewPredictor(l)
-	prompt := "Question: What is your name?"
+	prompt := "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a 1st grade school teacher.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nHow far are the stars?<|eot_id|><|start_header_id|>assistant<|end_header_id|>"
 	result := make(chan string)
 	go p.Predict(prompt, result)
 	log.Printf("Prompt is %s\n", prompt)

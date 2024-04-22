@@ -1,5 +1,5 @@
 #include "tokenizer.h"
-#include "common.h"
+#include "../../includes/common.h"
 
 struct tokens_list go_llama_tokenize(void * state_ptr, const char * prompt) {
     auto state = (go_llama_state*) state_ptr;
@@ -17,7 +17,7 @@ struct tokens_list go_llama_tokenize(void * state_ptr, const char * prompt) {
 }
 
 const char * go_llama_token_to_piece(void * state_ptr, const llama_token * tokens, unsigned int size) {
-    go_llama_state* state = (go_llama_state*) state_ptr;
+    auto state = (go_llama_state*) state_ptr;
     std::string token_str;
     for (unsigned int i = 0; i < size; i++) {
         token_str.append(llama_token_to_piece(state->ctx, tokens[i]));

@@ -1,6 +1,6 @@
-#include "go_llama.h"
 #include "predictor.h"
-#include "common.h"
+#include "../llama/llama.h"
+#include "../../includes/common.h"
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 #include <csignal>
@@ -18,50 +18,25 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-gpt_params p_g_params;
 llama_context * p_g_ctx;
-static bool is_interacting = false;
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__)) || defined (_WIN32)
 static void sigint_handler(int signo) {
     if (signo == SIGINT) {
-        if (!is_interacting && p_g_params.interactive) {
-            is_interacting = true;
-        } else {
-            printf("\n");
-            llama_print_timings(p_g_ctx);
-            _exit(130);
-        }
+        printf("\n");
+        llama_print_timings(p_g_ctx);
+        _exit(130);
     }
 }
 #endif
 
 int go_llama_predict(void * state_ptr, const char * prompt) {
-    gpt_params params = p_g_params;
-    go_llama_state * state = (go_llama_state *)state_ptr;
+    gpt_params params;
+    auto state = (go_llama_state *) state_ptr;
     llama_context * ctx = p_g_ctx = state->ctx;
     llama_model * model = state->model;
 
     llama_sampling_params & sparams = params.sparams;
-
-    // TODO: Dump params ?
-    //LOG("Params perplexity: %s\n", LOG_TOSTR(params.perplexity));
-
-    if (params.logits_all) {
-        printf("\n************\n");
-        printf("%s: please use the 'perplexity' tool for perplexity calculations\n", __func__);
-        printf("************\n\n");
-
-        return 0;
-    }
-
-    if (params.embedding) {
-        printf("\n************\n");
-        printf("%s: please use the 'embedding' tool for embedding calculations\n", __func__);
-        printf("************\n\n");
-
-        return 0;
-    }
 
     if (params.n_ctx != 0 && params.n_ctx < 8) {
         LOG_TEE("%s: warning: minimum context size is 8, using minimum size.\n", __func__);
@@ -145,7 +120,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
 
     std::vector<llama_token> embd_inp;
 
-    if (params.interactive_first || params.instruct || params.chatml || !params.prompt.empty() || session_tokens.empty()) {
+    if (params.instruct || params.chatml || !params.prompt.empty() || session_tokens.empty()) {
         LOG("tokenize the prompt\n");
         if (params.chatml) {
             params.prompt = "<|im_start|>system\n" + params.prompt + "<|im_end|>";
@@ -249,18 +224,11 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
 
     // in instruct mode, we inject a prefix and a suffix to each input by the user
     if (params.instruct) {
-        params.interactive_first = true;
         params.antiprompt.emplace_back("### Instruction:\n\n");
     }
         // similar for chatml mode
     else if (params.chatml) {
-        params.interactive_first = true;
         params.antiprompt.emplace_back("<|im_start|>user\n");
-    }
-
-    // enable interactive mode if interactive start is specified
-    if (params.interactive_first) {
-        params.interactive = true;
     }
 
     if (params.verbose_prompt) {
@@ -306,45 +274,6 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
 #endif
     }
 
-    if (params.interactive) {
-        LOG_TEE("%s: interactive mode on.\n", __func__);
-
-        if (!params.antiprompt.empty()) {
-            for (const auto & antiprompt : params.antiprompt) {
-                LOG_TEE("Reverse prompt: '%s'\n", antiprompt.c_str());
-                if (params.verbose_prompt) {
-                    auto tmp = ::llama_tokenize(ctx, antiprompt, false, true);
-                    for (int i : tmp) {
-                        LOG_TEE("%6d -> '%s'\n", i, llama_token_to_piece(ctx, i).c_str());
-                    }
-                }
-            }
-        }
-
-        if (params.input_prefix_bos) {
-            LOG_TEE("Input prefix with BOS\n");
-        }
-
-        if (!params.input_prefix.empty()) {
-            LOG_TEE("Input prefix: '%s'\n", params.input_prefix.c_str());
-            if (params.verbose_prompt) {
-                auto tmp = ::llama_tokenize(ctx, params.input_prefix, true, true);
-                for (int i : tmp) {
-                    LOG_TEE("%6d -> '%s'\n", i, llama_token_to_piece(ctx, i).c_str());
-                }
-            }
-        }
-
-        if (!params.input_suffix.empty()) {
-            LOG_TEE("Input suffix: '%s'\n", params.input_suffix.c_str());
-            if (params.verbose_prompt) {
-                auto tmp = ::llama_tokenize(ctx, params.input_suffix, false, true);
-                for (int i : tmp) {
-                    LOG_TEE("%6d -> '%s'\n", i, llama_token_to_piece(ctx, i).c_str());
-                }
-            }
-        }
-    }
     LOG_TEE("sampling: \n%s\n", llama_sampling_print(sparams).c_str());
     LOG_TEE("sampling order: \n%s\n", llama_sampling_order_print(sparams).c_str());
     LOG_TEE("generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d\n", n_ctx, params.n_batch, params.n_predict, params.n_keep);
@@ -365,27 +294,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
     }
     LOG_TEE("\n\n");
 
-    if (params.interactive) {
-        const char *control_message;
-        if (params.multiline_input) {
-            control_message = " - To return control to LLaMa, end your input with '\\'.\n"
-                              " - To return control without starting a new line, end your input with '/'.\n";
-        } else {
-            control_message = " - Press Return to return control to LLaMa.\n"
-                              " - To return control without starting a new line, end your input with '/'.\n"
-                              " - If you want to submit another line, end your input with '\\'.\n";
-        }
-        LOG_TEE("== Running in interactive mode. ==\n");
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__)) || defined (_WIN32)
-        LOG_TEE(       " - Press Ctrl+C to interject at any time.\n");
-#endif
-        LOG_TEE(       "%s\n", control_message);
-
-        is_interacting = params.interactive_first;
-    }
-
     bool is_antiprompt        = false;
-    bool input_echo           = true;
     bool display              = params.display_prompt; // the first thing we will do is to output the prompt, so set color accordingly
     bool need_to_save_session = !path_session.empty() && n_matching_session_tokens < embd_inp.size();
 
@@ -412,7 +321,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
 
     struct llama_sampling_context * ctx_sampling = llama_sampling_init(sparams);
 
-    while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
+    while (n_remain != 0 && !is_antiprompt) {
         // predict
         if (!embd.empty()) {
             // Note: (n_ctx - 4) here is to match the logic for commandline prompt handling via
@@ -578,7 +487,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
         embd.clear();
         embd_guidance.clear();
 
-        if (embd_inp.size() <= n_consumed && !is_interacting) {
+        if (embd_inp.size() <= n_consumed) {
             // optionally save the session on first sample (for faster prompt loading next time)
             if (!path_session.empty() && need_to_save_session && !params.prompt_cache_ro) {
                 need_to_save_session = false;
@@ -594,9 +503,6 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
             LOG("last: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, ctx_sampling->prev).c_str());
 
             embd.push_back(id);
-
-            // echo this to console
-            input_echo = true;
 
             // decrement remaining sampling budget
             --n_remain;
@@ -620,7 +526,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
         }
 
         // display text
-        if (input_echo && display) {
+        if (display) {
             for (auto id : embd) {
                 const std::string token_str = llama_token_to_piece(ctx, id);
                 // printf("%s", token_str.c_str());
@@ -636,7 +542,7 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
             fflush(stdout);
         }
         // reset color to default if there is no pending user input
-        if (input_echo && embd_inp.size() == n_consumed) {
+        if (embd_inp.size() == n_consumed) {
             display = true;
         }
 
@@ -652,15 +558,11 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
                 // If we're not running interactively, the reverse prompt might be tokenized with some following characters
                 // so we'll compensate for that by widening the search window a bit.
                 for (std::string & antiprompt : params.antiprompt) {
-                    size_t extra_padding = params.interactive ? 0 : 2;
-                    size_t search_start_pos = last_output.length() > static_cast<size_t>(antiprompt.length() + extra_padding)
-                                              ? last_output.length() - static_cast<size_t>(antiprompt.length() + extra_padding)
+                    size_t search_start_pos = last_output.length() > static_cast<size_t>(antiprompt.length() + 2)
+                                              ? last_output.length() - static_cast<size_t>(antiprompt.length() + 2)
                                               : 0;
 
                     if (last_output.find(antiprompt, search_start_pos) != std::string::npos) {
-                        if (params.interactive) {
-                            is_interacting = true;
-                        }
                         is_antiprompt = true;
                         break;
                     }
@@ -670,9 +572,6 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
                 llama_token last_token = llama_sampling_last(ctx_sampling);
                 for (std::vector<llama_token> ids : antiprompt_ids) {
                     if (ids.size() == 1 && last_token == ids[0]) {
-                        if (params.interactive) {
-                            is_interacting = true;
-                        }
                         is_antiprompt = true;
                         break;
                     }
@@ -685,129 +584,17 @@ int go_llama_predict(void * state_ptr, const char * prompt) {
 
             // deal with end of text token in interactive mode
             if (llama_sampling_last(ctx_sampling) == llama_token_eos(model)) {
+                tokenCallback("[end of text]");
                 LOG("found EOS token\n");
-
-                if (params.interactive) {
-                    if (!params.antiprompt.empty()) {
-                        // tokenize and inject first reverse prompt
-                        const auto first_antiprompt = ::llama_tokenize(ctx, params.antiprompt.front(), false, true);
-                        embd_inp.insert(embd_inp.end(), first_antiprompt.begin(), first_antiprompt.end());
-                        is_antiprompt = true;
-                    }
-
-                    is_interacting = true;
-                    printf("\n");
-                } else if (params.instruct || params.chatml) {
-                    is_interacting = true;
-                }
-            }
-
-            if (n_past > 0 && is_interacting) {
-                LOG("waiting for user input\n");
-
-                if (params.instruct || params.chatml) {
-                    printf("\n> ");
-                }
-
-                if (params.input_prefix_bos) {
-                    LOG("adding input prefix BOS token\n");
-                    embd_inp.push_back(llama_token_bos(model));
-                }
-
-                std::string buffer;
-                if (!params.input_prefix.empty()) {
-                    LOG("appending input prefix: '%s'\n", params.input_prefix.c_str());
-                    printf("%s", params.input_prefix.c_str());
-                }
-
-                std::string line;
-                display = true;
-
-                // Add tokens to embd only if the input buffer is non-empty
-                // Entering a empty line lets the user pass control back
-                if (buffer.length() > 1) {
-                    // append input suffix if any
-                    if (!params.input_suffix.empty()) {
-                        LOG("appending input suffix: '%s'\n", params.input_suffix.c_str());
-                        printf("%s", params.input_suffix.c_str());
-                    }
-
-                    LOG("buffer: '%s'\n", buffer.c_str());
-
-                    const size_t original_size = embd_inp.size();
-
-                    // instruct mode: insert instruction prefix
-                    if (params.instruct && !is_antiprompt) {
-                        LOG("inserting instruction prefix\n");
-                        n_consumed = embd_inp.size();
-                        embd_inp.insert(embd_inp.end(), inp_pfx.begin(), inp_pfx.end());
-                    }
-                    // chatml mode: insert user chat prefix
-                    if (params.chatml && !is_antiprompt) {
-                        LOG("inserting chatml prefix\n");
-                        n_consumed = embd_inp.size();
-                        embd_inp.insert(embd_inp.end(), cml_pfx.begin(), cml_pfx.end());
-                    }
-                    if (params.escape) {
-                        process_escapes(buffer);
-                    }
-
-                    const auto line_pfx = ::llama_tokenize(ctx, params.input_prefix, false, true);
-                    const auto line_inp = ::llama_tokenize(ctx, buffer,              false, false);
-                    const auto line_sfx = ::llama_tokenize(ctx, params.input_suffix, false, true);
-
-                    LOG("input tokens: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, line_inp).c_str());
-
-                    embd_inp.insert(embd_inp.end(), line_pfx.begin(), line_pfx.end());
-                    embd_inp.insert(embd_inp.end(), line_inp.begin(), line_inp.end());
-                    embd_inp.insert(embd_inp.end(), line_sfx.begin(), line_sfx.end());
-
-                    // instruct mode: insert response suffix
-                    if (params.instruct) {
-                        LOG("inserting instruction suffix\n");
-                        embd_inp.insert(embd_inp.end(), inp_sfx.begin(), inp_sfx.end());
-                    }
-                    // chatml mode: insert assistant chat suffix
-                    if (params.chatml) {
-                        LOG("inserting chatml suffix\n");
-                        embd_inp.insert(embd_inp.end(), cml_sfx.begin(), cml_sfx.end());
-                    }
-
-                    for (size_t i = original_size; i < embd_inp.size(); ++i) {
-                        const llama_token token = embd_inp[i];
-                        output_tokens.push_back(token);
-                        output_ss << llama_token_to_piece(ctx, token);
-                    }
-
-                    n_remain -= line_inp.size();
-                    LOG("n_remain: %d\n", n_remain);
-                } else {
-                    LOG("empty line, passing control back\n");
-                }
-
-                input_echo = false; // do not echo this again
-            }
-
-            if (n_past > 0) {
-                if (is_interacting) {
-                    llama_sampling_reset(ctx_sampling);
-                }
-                is_interacting = false;
+                break;
             }
         }
 
         // end of text token
-        if (!embd.empty() && embd.back() == llama_token_eos(model) && !(params.instruct || params.interactive || params.chatml)) {
+        if (!embd.empty() && embd.back() == llama_token_eos(model) && !(params.instruct || params.chatml)) {
             LOG_TEE(" [end of text]\n");
             tokenCallback("[end of text]");
             break;
-        }
-
-        // In interactive mode, respect the maximum number of tokens and drop back to user input when reached.
-        // We skip this logic when n_predict == -1 (infinite) or -2 (stop at context size).
-        if (params.interactive && n_remain <= 0 && params.n_predict >= 0) {
-            n_remain = params.n_predict;
-            is_interacting = true;
         }
     }
 

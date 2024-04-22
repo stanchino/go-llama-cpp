@@ -1,12 +1,12 @@
 package tokenizer
 
 /*
-#cgo CFLAGS: -std=c11 -I${SRCDIR}/../llama/ -I${SRCDIR}/../../includes/
-#cgo CXXFLAGS: -std=c++11 -I${SRCDIR}/../llama/ -I${SRCDIR}/../../includes/
+#cgo CFLAGS: -std=c11
+#cgo CXXFLAGS: -std=c++11
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "go_llama.h"
+#include "../llama/llama.h"
 #include "tokenizer.h"
 */
 import "C"
@@ -26,7 +26,7 @@ func NewTokenizer(l *llama.GoLlama) *Tokenizer {
 }
 
 func (t *Tokenizer) Tokenize(text string) []int {
-	var tokenList C.tokens_list = C.go_llama_tokenize(t.State, C.CString(text))
+	var tokenList C.tokens_list = C.go_llama_tokenize(t.GoLlama.State, C.CString(text))
 	tokens := unsafe.Slice(tokenList.tokens, tokenList.size)
 	result := make([]int, tokenList.size)
 	for i, t := range tokens {

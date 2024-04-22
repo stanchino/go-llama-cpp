@@ -1,11 +1,11 @@
 package predictor
 
 /*
-#cgo CFLAGS: -std=c11 -I${SRCDIR}/../llama/ -I${SRCDIR}/../../includes/
-#cgo CXXFLAGS: -std=c++11 -I${SRCDIR}/../llama/ -I${SRCDIR}/../../includes/
+#cgo CFLAGS: -std=c11
+#cgo CXXFLAGS: -std=c++11
 #include <stdlib.h>
 #include <stdbool.h>
-#include "go_llama.h"
+#include "../llama/llama.h"
 #include "predictor.h"
 */
 import "C"

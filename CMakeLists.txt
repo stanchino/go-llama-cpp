@@ -29,11 +29,15 @@ get_target_property(_llama_transient_defines llama INTERFACE_COMPILE_DEFINITIONS
 target_compile_definitions(common PRIVATE "${_llama_transient_defines}")
 
 add_library(${PROJECT_NAME}
-        go_llama.cpp go_llama.h
-        tokenizer/tokenizer.cpp tokenizer/tokenizer.h
-        predictor predictor/predictor.cpp predictor/predictor.h
+        pkg/llama/llama.cpp pkg/llama/llama.h
+        pkg/options/options.h
+        pkg/util/util.cpp pkg/util/util.h
+        pkg/tokenizer/tokenizer.cpp pkg/tokenizer/tokenizer.h
+        pkg/predictor/predictor.cpp pkg/predictor/predictor.h
 )
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/tokenizer ${CMAKE_CURRENT_SOURCE_DIR}/predictor ${llama_SOURCE_DIR} ${_common_path})
+target_sources(${PROJECT_NAME} PRIVATE pkg/llama pkg/options pkg/predictor pkg/tokenizer pkg/util)
+target_include_directories(${PROJECT_NAME} PRIVATE
+        ${llama_SOURCE_DIR} ${_common_path})
 
 install(TARGETS ${PROJECT_NAME} llama ggml common)
 
