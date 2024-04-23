@@ -30,7 +30,7 @@ target_compile_definitions(common PRIVATE "${_llama_transient_defines}")
 
 add_library(${PROJECT_NAME}
         pkg/llama/llama.cpp pkg/llama/llama.h
-        pkg/options/options.h
+        pkg/options/options.cpp pkg/options/options.h
         pkg/util/util.cpp pkg/util/util.h
         pkg/tokenizer/tokenizer.cpp pkg/tokenizer/tokenizer.h
         pkg/predictor/predictor.cpp pkg/predictor/predictor.h

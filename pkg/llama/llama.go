@@ -9,13 +9,13 @@ package llama
 #include <stdlib.h>
 #include <stdbool.h>
 #include "../util/util.h"
+#include "../options/options.h"
 #include "llama.h"
 */
 import "C"
 import (
-	"unsafe"
-
 	"github.com/stanchino/go-llama-cpp/pkg/options"
+	"unsafe"
 )
 
 type GoLlama struct {
@@ -24,8 +24,7 @@ type GoLlama struct {
 }
 
 func NewGoLlama(options options.Options) *GoLlama {
-	params := options.ToInitParams()
-	state := C.go_llama_init(params)
+	state := C.go_llama_init(options.ToInitParams())
 	return &GoLlama{
 		State:   unsafe.Pointer(state),
 		Options: options,
@@ -33,7 +32,6 @@ func NewGoLlama(options options.Options) *GoLlama {
 }
 
 func (l *GoLlama) Free() {
-	l.Options.Free()
-	C.go_llama_free(l.State)
+	C.go_llama_free((*C.struct_go_llama_state)(l.State))
 	C.free(l.State)
 }

@@ -22,34 +22,24 @@
 llama_model * g_model;
 llama_context_params g_ctx_params;
 
-void* go_llama_init(void * params_ptr) {
-    auto p = (go_llama_params*) params_ptr;
-    gpt_params params;
-    params.model = p->model;
-    if (p->antiprompt != nullptr) {
-        auto antiprompt = (charArray*) p->antiprompt;
-        for (unsigned int i = 0; i < antiprompt->len; i++) {
-            params.antiprompt.emplace_back(antiprompt->data[i]);
-            printf("antiprompt: %s\n", antiprompt->data[i]);
-        }
-    }
-    auto mparams = llama_model_params_from_gpt_params(params);
-    mparams.use_mmap = p->use_mmap;
+struct go_llama_state * go_llama_init(void * params_ptr) {
+    auto params = (gpt_params *) params_ptr;
+    auto mparams = llama_model_params_from_gpt_params(*params);
     llama_model * model;
 
     llama_backend_init();
     LOG("%s: load the model and apply lora adapter, if any\n", __func__);
     // TODO: Add support for HF and URL loading
-    model = llama_load_model_from_file(p->model, mparams);
+    model = llama_load_model_from_file(params->model.c_str(), mparams);
     if (model == nullptr) {
-        fprintf(stderr, "%s: error: failed to load model '%s'\n", __func__, params.model.c_str());
+        fprintf(stderr, "%s: error: failed to load model '%s'\n", __func__, params->model.c_str());
         return nullptr;
     }
-    auto cparams = llama_context_params_from_gpt_params(params);
+    auto cparams = llama_context_params_from_gpt_params(*params);
 
     llama_context * ctx = llama_new_context_with_model(model, cparams);
     if (ctx == nullptr) {
-        fprintf(stderr, "%s: error: failed to create context with model '%s'\n", __func__, params.model.c_str());
+        fprintf(stderr, "%s: error: failed to create context with model '%s'\n", __func__, params->model.c_str());
         llama_free_model(model);
         return nullptr;
     }
@@ -57,16 +47,15 @@ void* go_llama_init(void * params_ptr) {
     {
         LOG("warming up the model with an empty run\n");
         std::vector<llama_token> tmp = { llama_token_bos(model), llama_token_eos(model), };
-        llama_decode(ctx, llama_batch_get_one(tmp.data(), std::min((int) tmp.size(), params.n_batch), 0, 0));
+        llama_decode(ctx, llama_batch_get_one(tmp.data(), std::min((int) tmp.size(), params->n_batch), 0, 0));
         llama_kv_cache_clear(ctx);
         llama_synchronize(ctx);
         llama_reset_timings(ctx);
     }
-    go_llama_state * state;
-    state = new go_llama_state;
-    state->model = model;
+    auto state = new(go_llama_state);
     state->ctx = ctx;
-    state->ctx_params = go_llama_context_params{&cparams};
+    state->model = model;
+    state->params = params;
     return state;
 }
 
@@ -86,10 +75,10 @@ int go_llama_set_adapters(char ** adapters, int size) {
     return 0;
 }
 
-void go_llama_free(void * state_ptr) {
-    go_llama_state * state = (go_llama_state *)state_ptr;
+void go_llama_free(struct go_llama_state * state) {
     llama_print_timings(state->ctx);
     llama_free(state->ctx);
     llama_free_model(state->model);
+    free(state->params);
     llama_backend_free();
 }

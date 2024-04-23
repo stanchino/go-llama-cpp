@@ -16,8 +16,10 @@ static bool file_is_empty(const std::string &path) {
 extern "C" {
 #endif
 typedef const char cchar_t;
-extern void tokenCallback(cchar_t *);
-int go_llama_predict(void * state_ptr, const char * prompt);
+int go_llama_predict(struct go_llama_state * state, const char * prompt);
+extern char * predictorInputCallback(struct go_llama_state * state);
+extern void predictorOutputCallback(struct go_llama_state * state, cchar_t *);
+extern void predictorEndOutputCallback(struct go_llama_state * state);
 #ifdef __cplusplus
 }
 #endif

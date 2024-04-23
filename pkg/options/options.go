@@ -18,24 +18,28 @@ import (
 type Options struct {
 	ModelName        string
 	UseMMap          bool
+	Interactive      bool
+	InteractiveFirst bool
+	DisplayPrompt    bool
+	InputPrefix      string
+	InputSuffix      string
 	AntiPrompts      []string
-	AntiPromptsArray *util.CharArray
-	InitParams       unsafe.Pointer
 }
 
 func (o *Options) ToInitParams() unsafe.Pointer {
 	options := C.go_llama_params{
-		model:    C.CString(o.ModelName),
-		use_mmap: C.bool(o.UseMMap),
+		model:             C.CString(o.ModelName),
+		use_mmap:          C.bool(o.UseMMap),
+		interactive:       C.bool(o.Interactive),
+		interactive_first: C.bool(o.InteractiveFirst),
+		display_prompt:    C.bool(o.DisplayPrompt),
+		input_prefix:      C.CString(o.InputPrefix),
+		input_suffix:      C.CString(o.InputSuffix),
 	}
 	if len(o.AntiPrompts) > 0 {
-		o.AntiPromptsArray = util.NewCharArray(o.AntiPrompts)
-		options.antiprompt = o.AntiPromptsArray.Inner
+		arr := util.NewCharArray(o.AntiPrompts)
+		defer arr.Free()
+		options.antiprompt = (*C.charArray)(arr.Pointer)
 	}
-	o.InitParams = unsafe.Pointer(&options)
-	return o.InitParams
-}
-
-func (o *Options) Free() {
-	o.AntiPromptsArray.Free()
+	return unsafe.Pointer(C.go_llama_params_to_gpt_params(options))
 }

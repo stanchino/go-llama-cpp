@@ -10,7 +10,7 @@ import "C"
 import "unsafe"
 
 type CharArray struct {
-	Inner unsafe.Pointer
+	Pointer unsafe.Pointer
 }
 
 func NewCharArray(arr []string) *CharArray {
@@ -20,10 +20,10 @@ func NewCharArray(arr []string) *CharArray {
 		C.setArrayString(charArray, C.CString(s), C.ulong(i))
 	}
 	return &CharArray{
-		Inner: unsafe.Pointer(charArray),
+		Pointer: unsafe.Pointer(charArray),
 	}
 }
 
 func (c *CharArray) Free() {
-	C.freeCharArray((*C.charArray)(c.Inner))
+	C.freeCharArray((*C.charArray)(c.Pointer))
 }

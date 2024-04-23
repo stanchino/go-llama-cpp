@@ -11,8 +11,8 @@ typedef struct tokens_list {
     unsigned long size;
     go_llama_token * tokens;
 } tokens_list;
-struct tokens_list go_llama_tokenize(void * state_ptr, const char * prompt);
-const char * go_llama_token_to_piece(void * state_ptr, const go_llama_token * tokens, unsigned int size);
+struct tokens_list go_llama_tokenize(struct go_llama_state * state, const char * prompt);
+const char * go_llama_token_to_piece(struct go_llama_state * state, const go_llama_token * tokens, unsigned int size);
 #ifdef __cplusplus
 }
 #endif

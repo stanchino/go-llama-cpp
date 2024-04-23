@@ -8,9 +8,14 @@ extern "C" {
 typedef struct go_llama_params {
     char * model;
     bool use_mmap;
-    void * antiprompt;
+    bool interactive;
+    bool interactive_first;
+    bool display_prompt;
+    char * input_prefix;
+    char * input_suffix;
+    charArray * antiprompt;
 } go_llama_params;
-
+void * go_llama_params_to_gpt_params(go_llama_params p);
 #ifdef __cplusplus
 }
 #endif

@@ -6,6 +6,7 @@ package tokenizer
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "../options/options.h"
 #include "../llama/llama.h"
 #include "tokenizer.h"
 */
@@ -26,7 +27,7 @@ func NewTokenizer(l *llama.GoLlama) *Tokenizer {
 }
 
 func (t *Tokenizer) Tokenize(text string) []int {
-	var tokenList C.tokens_list = C.go_llama_tokenize(t.GoLlama.State, C.CString(text))
+	var tokenList C.tokens_list = C.go_llama_tokenize((*C.struct_go_llama_state)(t.State), C.CString(text))
 	tokens := unsafe.Slice(tokenList.tokens, tokenList.size)
 	result := make([]int, tokenList.size)
 	for i, t := range tokens {
@@ -41,6 +42,6 @@ func (t *Tokenizer) ToString(tokens []int) string {
 	for i, t := range tokens {
 		result[i] = C.go_llama_token(t)
 	}
-	str := C.go_llama_token_to_piece(t.State, &result[0], C.uint(len(tokens)))
+	str := C.go_llama_token_to_piece((*C.struct_go_llama_state)(t.State), &result[0], C.uint(len(tokens)))
 	return C.GoString(str)
 }
