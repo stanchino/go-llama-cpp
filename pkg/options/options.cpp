@@ -11,12 +11,13 @@ void * go_llama_params_to_gpt_params(go_llama_params p) {
     params.input_prefix      = p.input_prefix;
     params.input_suffix      = p.input_suffix;
     params.display_prompt    = p.display_prompt;
-    if (p.antiprompt != nullptr) {
-        auto antiprompts = (charArray*) p.antiprompt;
-        for (unsigned int i = 0; i < antiprompts->len; i++) {
-            params.antiprompt.emplace_back(antiprompts->data[i]);
+    params.n_ctx             = p.n_ctx;
+    if (p.anti_prompts != nullptr) {
+        auto anti_prompts = (charArray*) p.anti_prompts;
+        for (unsigned int i = 0; i < anti_prompts->len; i++) {
+            params.antiprompt.emplace_back(anti_prompts->data[i]);
         }
     }
     *params_ptr = params;
-    return (void*) params_ptr;
+    return (void *) params_ptr;
 }

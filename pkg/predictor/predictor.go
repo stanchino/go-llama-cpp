@@ -50,7 +50,9 @@ func (p *Predictor) SetInputCallback(cb func() string) {
 }
 
 func (p *Predictor) Predict(prompt string) {
-	C.go_llama_predict((*C.struct_go_llama_state)(p.State), C.CString(prompt))
+	C.go_llama_predict(
+		(*C.struct_go_llama_state)(p.State),
+		C.CString(p.Options.ApplyTemplate(prompt)))
 }
 
 func (p *Predictor) OutputCallback(token string) {
@@ -60,7 +62,7 @@ func (p *Predictor) OutputCallback(token string) {
 }
 func (p *Predictor) InputCallback() string {
 	if p.inputCallback != nil {
-		return p.inputCallback()
+		return p.Options.ApplyTemplate(p.inputCallback())
 	}
 	return ""
 }

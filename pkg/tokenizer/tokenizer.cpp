@@ -1,9 +1,8 @@
 #include "tokenizer.h"
 #include "../../includes/common.h"
 
-struct tokens_list go_llama_tokenize(struct go_llama_state * state, const char * prompt) {
-    const bool add_bos = llama_should_add_bos_token(llama_get_model(state->ctx));
-    std::vector<llama_token> tokens = llama_tokenize(state->ctx, prompt, add_bos);
+struct tokens_list go_llama_tokenize(struct go_llama_state * state, const char * prompt, bool add_special, bool parse_special) {
+    std::vector<llama_token> tokens = llama_tokenize(state->ctx, prompt, add_special, parse_special);
     unsigned int size = tokens.size();
     struct tokens_list list = {
             size,

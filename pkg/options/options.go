@@ -10,36 +10,43 @@ package options
 */
 import "C"
 import (
-	"unsafe"
-
+	"fmt"
 	"github.com/stanchino/go-llama-cpp/pkg/util"
+	"unsafe"
 )
 
 type Options struct {
 	ModelName        string
 	UseMMap          bool
+	ContextSize      int
 	Interactive      bool
 	InteractiveFirst bool
 	DisplayPrompt    bool
 	InputPrefix      string
 	InputSuffix      string
+	Template         string
 	AntiPrompts      []string
+	EndOfTextPrompts []string
 }
 
 func (o *Options) ToInitParams() unsafe.Pointer {
-	options := C.go_llama_params{
+	return unsafe.Pointer(&C.go_llama_params{
 		model:             C.CString(o.ModelName),
 		use_mmap:          C.bool(o.UseMMap),
 		interactive:       C.bool(o.Interactive),
 		interactive_first: C.bool(o.InteractiveFirst),
 		display_prompt:    C.bool(o.DisplayPrompt),
+		n_ctx:             C.int(o.ContextSize),
 		input_prefix:      C.CString(o.InputPrefix),
 		input_suffix:      C.CString(o.InputSuffix),
+		anti_prompts:      (*C.charArray)(util.NewCharArray(o.AntiPrompts).Pointer),
+		eot_prompts:       (*C.charArray)(util.NewCharArray(o.EndOfTextPrompts).Pointer),
+	})
+}
+
+func (o *Options) ApplyTemplate(str string) string {
+	if o.Template == "" || str == "" {
+		return str
 	}
-	if len(o.AntiPrompts) > 0 {
-		arr := util.NewCharArray(o.AntiPrompts)
-		defer arr.Free()
-		options.antiprompt = (*C.charArray)(arr.Pointer)
-	}
-	return unsafe.Pointer(C.go_llama_params_to_gpt_params(options))
+	return fmt.Sprintf(o.Template, str)
 }

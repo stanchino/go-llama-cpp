@@ -11,9 +11,11 @@ typedef struct go_llama_params {
     bool interactive;
     bool interactive_first;
     bool display_prompt;
+    int n_ctx;
     char * input_prefix;
     char * input_suffix;
-    charArray * antiprompt;
+    charArray * anti_prompts;
+    charArray * eot_prompts;
 } go_llama_params;
 void * go_llama_params_to_gpt_params(go_llama_params p);
 #ifdef __cplusplus

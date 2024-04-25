@@ -1,29 +1,13 @@
 #include "llama.h"
 #include "../../includes/common.h"
-#include "../../includes/llama.h"
-#include "../util/util.h"
-
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
-#include <csignal>
-#include <unistd.h>
-#elif defined (_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-#include <signal.h>
-#endif
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-llama_model * g_model;
-llama_context_params g_ctx_params;
-
 struct go_llama_state * go_llama_init(void * params_ptr) {
-    auto params = (gpt_params *) params_ptr;
+    auto p = (go_llama_params *) params_ptr;
+    auto params = (gpt_params *) go_llama_params_to_gpt_params(*p);
     auto mparams = llama_model_params_from_gpt_params(*params);
     llama_model * model;
 
@@ -55,10 +39,13 @@ struct go_llama_state * go_llama_init(void * params_ptr) {
     auto state = new(go_llama_state);
     state->ctx = ctx;
     state->model = model;
-    state->params = params;
+    state->llama_params = params;
+    state->params = p;
+    state->ctx_guidance = nullptr;
     return state;
 }
 
+/*
 int go_llama_set_adapters(char ** adapters, int size) {
     for (int i = 0; i < size; ++i) {
         const std::string & lora_adapter = adapters[i];
@@ -74,11 +61,14 @@ int go_llama_set_adapters(char ** adapters, int size) {
     }
     return 0;
 }
+*/
 
 void go_llama_free(struct go_llama_state * state) {
     llama_print_timings(state->ctx);
+    if (state->ctx_guidance) { llama_free(state->ctx_guidance); }
     llama_free(state->ctx);
     llama_free_model(state->model);
-    free(state->params);
+    if (state->ctx_sampling) llama_sampling_free(state->ctx_sampling);
     llama_backend_free();
+    free(state->llama_params);
 }

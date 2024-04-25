@@ -26,8 +26,18 @@ func NewTokenizer(l *llama.GoLlama) *Tokenizer {
 	}
 }
 
-func (t *Tokenizer) Tokenize(text string) []int {
-	var tokenList C.tokens_list = C.go_llama_tokenize((*C.struct_go_llama_state)(t.State), C.CString(text))
+func (t *Tokenizer) Tokenize(text string, special ...bool) []int {
+	addSpecial := false
+	parseSpecial := false
+	if len(special) == 1 {
+		addSpecial = special[0]
+	}
+	if len(special) == 2 {
+		addSpecial = special[0]
+		parseSpecial = special[1]
+	}
+	var tokenList C.tokens_list = C.go_llama_tokenize((*C.struct_go_llama_state)(t.State),
+		C.CString(text), C.bool(addSpecial), C.bool(parseSpecial))
 	tokens := unsafe.Slice(tokenList.tokens, tokenList.size)
 	result := make([]int, tokenList.size)
 	for i, t := range tokens {

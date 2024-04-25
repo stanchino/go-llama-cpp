@@ -11,7 +11,7 @@ typedef struct tokens_list {
     unsigned long size;
     go_llama_token * tokens;
 } tokens_list;
-struct tokens_list go_llama_tokenize(struct go_llama_state * state, const char * prompt);
+struct tokens_list go_llama_tokenize(struct go_llama_state * state, const char * prompt, bool add_special, bool parse_special);
 const char * go_llama_token_to_piece(struct go_llama_state * state, const go_llama_token * tokens, unsigned int size);
 #ifdef __cplusplus
 }
