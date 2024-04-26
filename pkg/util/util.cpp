@@ -1,14 +1,14 @@
 #include <cstdlib>
 #include "util.h"
 
-struct charArray * makeCharArray(unsigned long len) {
+struct charArray *makeCharArray(unsigned long len) {
     auto arr = new(charArray);
     arr->len = len;
-    arr->data = static_cast<char**>(calloc(sizeof(char*), len));
+    arr->data = static_cast<char **>(calloc(sizeof(char *), len));
     return arr;
 }
 
-void setArrayString(const struct charArray * arr, char *s, unsigned long n) {
+void setArrayString(const struct charArray *arr, char *s, unsigned long n) {
     arr->data[n] = s;
 }
 

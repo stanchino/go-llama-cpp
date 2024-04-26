@@ -20,10 +20,10 @@ import (
 
 type GoLlama struct {
 	State   unsafe.Pointer
-	Options options.Options
+	Options *options.Options
 }
 
-func NewGoLlama(options options.Options) *GoLlama {
+func NewGoLlama(options *options.Options) *GoLlama {
 	state := C.go_llama_init(options.ToInitParams())
 	return &GoLlama{
 		State:   unsafe.Pointer(state),

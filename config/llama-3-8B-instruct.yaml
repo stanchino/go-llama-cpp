@@ -1,0 +1,14 @@
+model: ../../Development/models/NousResearch_Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf
+contextSize: 4096
+useMMap: false
+#interactive: false
+#interactiveFirst: false
+displayPrompt: false
+antiPrompts:
+  - <|user|>
+template: |
+  <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+  %s<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+  
+

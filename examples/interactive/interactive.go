@@ -15,23 +15,14 @@ import (
 )
 
 func main() {
-	modelName := flag.String("m", "", "Provide a path to the model file")
+	config := flag.String("c", "", "Provide a path to the config file")
 	flag.Parse()
-	if *modelName == "" {
-		log.Fatal("You must provide a path to the model file")
+	opt, err := options.LoadConfig(*config)
+	if err != nil {
+		log.Fatal(err)
 	}
-	l := llama.NewGoLlama(options.Options{
-		ModelName:        *modelName,
-		ContextSize:      1024,
-		UseMMap:          false,
-		Interactive:      true,
-		InteractiveFirst: true,
-		DisplayPrompt:    false,
-		AntiPrompts:      []string{"<|user|>"},
-		EndOfTextPrompts: []string{"<|end|>"},
-		Template:         "<|user|>\n%s\n<|end|>\n<|assistant|>\n",
-		//Template:    "<|begin_of_text|><|start_header_id|>user<|end_header_id|>%s<|eot_id|><|start_header_id|>assistant<|end_header_id|>",
-	})
+	opt.InteractiveFirst = true
+	l := llama.NewGoLlama(opt)
 	defer l.Free()
 
 	p := predictor.NewPredictor(l)
@@ -48,7 +39,11 @@ func main() {
 		scanner.Scan()
 		return scanner.Text()
 	})
-	go p.Predict("Hi there")
+	go func() {
+		if ok := p.Predict(); ok != nil {
+			log.Fatal(ok)
+		}
+	}()
 	for v := range result {
 		fmt.Printf("%s%s", examples.AnsiColorYellow, v)
 	}

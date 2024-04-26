@@ -5,10 +5,10 @@ extern "C" {
 #endif
 typedef struct charArray {
     unsigned long len;
-    char ** data;
+    char **data;
 } charArray;
-struct charArray * makeCharArray(unsigned long len);
-void setArrayString(const struct charArray * arr, char *s, unsigned long n);
+struct charArray *makeCharArray(unsigned long len);
+void setArrayString(const struct charArray *arr, char *s, unsigned long n);
 void freeCharArray(struct charArray *arr);
 
 #ifdef __cplusplus

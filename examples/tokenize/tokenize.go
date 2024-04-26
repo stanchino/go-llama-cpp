@@ -16,8 +16,8 @@ func main() {
 	if *modelName == "" {
 		log.Fatal("You must provide a path to the model file")
 	}
-	l := llama.NewGoLlama(options.Options{
-		ModelName: *modelName,
+	l := llama.NewGoLlama(&options.Options{
+		Model: *modelName,
 	})
 	defer l.Free()
 
