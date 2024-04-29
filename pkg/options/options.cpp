@@ -12,10 +12,16 @@ void *go_llama_params_to_gpt_params(go_llama_params p) {
     params.input_prefix = p.input_prefix;
     params.input_suffix = p.input_suffix;
     params.display_prompt = p.display_prompt;
-    params.n_ctx = p.n_ctx;
     params.prompt = p.prompt;
-    params.rope_freq_base = p.rope_freq_base;
-    params.rope_freq_scale = p.rope_freq_scale;
+    if (p.n_ctx > 0) {
+          params_ptr->n_ctx = p.n_ctx;
+      }
+      if (p.rope_freq_base > 0) {
+          params_ptr->rope_freq_base = p.rope_freq_base;
+      }
+      if (p.rope_freq_scale > 0) {
+          params_ptr->rope_freq_scale = p.rope_freq_scale;
+      }
     if (p.anti_prompts != nullptr) {
         auto anti_prompts = (charArray *) p.anti_prompts;
         for (unsigned int i = 0; i < anti_prompts->len; i++) {

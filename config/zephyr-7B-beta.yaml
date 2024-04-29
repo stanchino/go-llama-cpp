@@ -1,0 +1,9 @@
+model: ../../Development/models/TheBloke/TheBloke_zephyr-7B-beta-GGUF/zephyr-7b-beta.Q5_K_M.gguf
+useMMap: false
+ContextSize: 512
+template: |-
+  <|system|>
+  </s>
+  <|user|>
+  %s</s>
+  <|assistant|>
