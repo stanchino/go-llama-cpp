@@ -257,10 +257,8 @@ struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_stat
     if (sparams.cfg_scale > 1.f) {
         struct llama_context_params lparams = llama_context_params_from_gpt_params(*p_state->params);
         p_state->ctx_guidance = llama_new_context_with_model(state->model, lparams);
-    }
 
-    // Tokenize negative prompt
-    if (p_state->ctx_guidance) {
+        // Tokenize negative prompt
         LOG("cfg_negative_prompt: \"%s\"\n", log_tostr(sparams.cfg_negative_prompt));
 
         emb->guidance_inp = ::llama_tokenize(p_state->ctx_guidance, sparams.cfg_negative_prompt, true, true);
@@ -559,7 +557,6 @@ int go_llama_predict(struct go_llama_state * state_ptr, struct go_llama_predict_
 
     llama_numa_init(p_state->params->numa);
     p_state->ctx_sampling = llama_sampling_init(p_state->params->sparams);
-
     while ((p_state->n_remain != 0 && !p_state->is_anti_prompt) || p_state->params->interactive) {
         // predict
         if (!emb->embd_full.empty()) {
@@ -619,9 +616,13 @@ int go_llama_predict(struct go_llama_state * state_ptr, struct go_llama_predict_
         }
     }
     predictorEndOutputCallback(p_state);
+    llama_kv_cache_clear(l_state->ctx);
+    //TODO: save output tokens to the session tokens
+    return 0;
+}
+
+void go_llama_predict_free(struct go_llama_predict_state * p_state) {
     if (p_state->ctx_guidance) { llama_free(p_state->ctx_guidance); }
     if (p_state->ctx_sampling) llama_sampling_free(p_state->ctx_sampling);
     free(p_state);
-    //TODO: save output tokens to the session tokens
-    return 0;
 }

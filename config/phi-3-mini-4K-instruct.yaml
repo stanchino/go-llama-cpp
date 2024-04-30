@@ -1,4 +1,4 @@
-model: ../../Development/models/microsoft_Phi-3-mini-4k-instruct-gguf/Phi-3-mini-4k-instruct-q4.gguf
+model: ~/Development/models/microsoft_Phi-3-mini-4k-instruct-gguf/Phi-3-mini-4k-instruct-q4.gguf
 contextSize: 4096
 useMMap: false
 #interactive: false
@@ -8,7 +8,7 @@ antiPrompts:
   - <|user|>
 endOfTextPrompts:
   - <|end|>
-template: |
+template: |-
   <|user|>
   %s<|end|>
   <|assistant|>

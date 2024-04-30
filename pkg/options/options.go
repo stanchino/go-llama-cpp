@@ -17,6 +17,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
@@ -53,14 +54,26 @@ func LoadConfig(configFile string) (*Options, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to load configuration from file %s: %s", yamlFile, err)
 	}
-	if opt.Model, err = filepath.Abs(filepath.Clean(opt.Model)); err != nil {
-		return nil, err
+	if ok := opt.Prepare(); ok != nil {
+		return nil, ok
 	}
-	opt.Prepare()
 	return &opt, nil
 }
 
-func (o *Options) Prepare() {
+func (o *Options) Prepare() error {
+	if strings.HasPrefix(o.Model, "~") {
+		if dirname, err := os.UserHomeDir(); err != nil {
+			return err
+		} else {
+			o.Model = filepath.Join(dirname, o.Model[1:])
+		}
+
+	}
+	if model, err := filepath.Abs(filepath.Clean(o.Model)); err != nil {
+		return err
+	} else {
+		o.Model = model
+	}
 	if o.ContextSize < 0 {
 		log.Println("warning: minimum context size is 8, using minimum size.")
 		o.ContextSize = 8
@@ -90,10 +103,13 @@ func (o *Options) Prepare() {
 			log.Println("Input suffix: " + o.InputSuffix)
 		}
 	}
+	return nil
 }
 
-func (o *Options) ToInitParams() unsafe.Pointer {
-	o.Prepare()
+func (o *Options) ToInitParams() (unsafe.Pointer, error) {
+	if ok := o.Prepare(); ok != nil {
+		return nil, ok
+	}
 	return unsafe.Pointer(&C.go_llama_params{
 		model:             C.CString(o.Model),
 		use_mmap:          C.bool(o.UseMMap),
@@ -109,7 +125,7 @@ func (o *Options) ToInitParams() unsafe.Pointer {
 		prompt:            C.CString(o.prompt),
 		anti_prompts:      (*C.charArray)(util.NewCharArray(o.AntiPrompts).Pointer),
 		eot_prompts:       (*C.charArray)(util.NewCharArray(o.EndOfTextPrompts).Pointer),
-	})
+	}), nil
 }
 
 func (o *Options) ApplyTemplate(str string) string {

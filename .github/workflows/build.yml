@@ -3,10 +3,10 @@ name: Build llama.cpp for different architectures
 on:
   push:
     branches: [ "main" ]
-    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', '**/*.go']
+    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', 'pkg/**/*.go']
   pull_request:
     branches: [ "main" ]
-    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', '**/*.go']
+    paths: ['.github/workflows/**', '**/CMakeLists.txt', '**/Makefile', '**/*.h', '**/*.cpp', '**/*.c', '**/*.cpp', '**/*.cu', '**/*.swift', '**/*.m', 'pkg/**/*.go']
 
 jobs:
   macOS-latest:

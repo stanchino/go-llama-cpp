@@ -16,9 +16,12 @@ func main() {
 	if *modelName == "" {
 		log.Fatal("You must provide a path to the model file")
 	}
-	l := llama.NewGoLlama(&options.Options{
+	l, err := llama.NewGoLlama(&options.Options{
 		Model: *modelName,
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer l.Free()
 
 	prompt := "<|user|>\nWhat's your name?<|end|>\n<|assistant|>"

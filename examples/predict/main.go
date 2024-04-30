@@ -17,14 +17,17 @@ func main() {
 	if *prompt == "" {
 		log.Fatal("no prompt provided")
 	}
-	opt, err := options.LoadConfig(*config)
-	if err != nil {
-		log.Fatal(err)
+	opt, cErr := options.LoadConfig(*config)
+	if cErr != nil {
+		log.Fatal(cErr)
 	}
 	opt.Interactive = false
 	opt.InteractiveFirst = false
 	opt.Prompt = *prompt
-	l := llama.NewGoLlama(opt)
+	l, lErr := llama.NewGoLlama(opt)
+	if lErr != nil {
+		log.Fatal(lErr)
+	}
 	defer l.Free()
 
 	p := predictor.NewPredictor(l)

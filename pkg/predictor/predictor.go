@@ -33,16 +33,20 @@ var (
 )
 
 func NewPredictor(l *llama.GoLlama) *Predictor {
-	state := unsafe.Pointer(C.go_llama_init_predict_state((*C.struct_go_llama_state)(l.State)))
 	p := &Predictor{
-		GoLlama:      l,
-		PredictState: state,
+		GoLlama: l,
 	}
-	if !l.Options.InteractiveFirst {
-		p.SetPrompt(l.Options.Prompt)
+	p.InitState()
+	return p
+}
+
+func (p *Predictor) InitState() {
+	state := unsafe.Pointer(C.go_llama_init_predict_state((*C.struct_go_llama_state)(p.State)))
+	p.PredictState = state
+	if !p.Options.InteractiveFirst && p.Options.Prompt != "" {
+		p.SetPrompt(p.Options.Prompt)
 	}
 	predictors[uintptr(state)] = p
-	return p
 }
 
 func (p *Predictor) SetPrompt(prompt string) {
@@ -73,6 +77,11 @@ func (p *Predictor) SetInputCallback(cb func() string) {
 		}
 	}
 	p.inputCallback = cb
+}
+
+func (p *Predictor) WithPrompt(prompt string) *Predictor {
+	p.SetPrompt(prompt)
+	return p
 }
 
 func (p *Predictor) Predict() error {
@@ -112,6 +121,11 @@ func predictorInputCallback(statePtr *C.struct_go_llama_predict_state) *C.char {
 		return C.CString(predictor.InputCallback())
 	}
 	return nil
+}
+
+func (p *Predictor) Free() {
+	C.go_llama_predict_free((*C.struct_go_llama_predict_state)(p.PredictState))
+	delete(predictors, uintptr(p.PredictState))
 }
 
 //export predictorOutputCallback

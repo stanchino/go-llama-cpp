@@ -1,0 +1,9 @@
+go 1.22.2
+
+use (
+	examples/interactive
+	examples/predict
+	examples/tokenize
+	examples/server
+	.
+)

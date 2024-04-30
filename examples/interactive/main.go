@@ -17,12 +17,15 @@ import (
 func main() {
 	config := flag.String("c", "", "Provide a path to the config file")
 	flag.Parse()
-	opt, err := options.LoadConfig(*config)
-	if err != nil {
-		log.Fatal(err)
+	opt, cErr := options.LoadConfig(*config)
+	if cErr != nil {
+		log.Fatal(cErr)
 	}
 	opt.InteractiveFirst = true
-	l := llama.NewGoLlama(opt)
+	l, lErr := llama.NewGoLlama(opt)
+	if lErr != nil {
+		log.Fatal(lErr)
+	}
 	defer l.Free()
 
 	p := predictor.NewPredictor(l)

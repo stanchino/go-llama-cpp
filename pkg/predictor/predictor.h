@@ -49,6 +49,7 @@ typedef const char cchar_t;
 struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_state * o_state);
 void go_llama_set_prompt(struct go_llama_state * state, struct go_llama_predict_state * p_state, const char * prompt);
 int go_llama_predict(struct go_llama_state *state, struct go_llama_predict_state *p_state);
+void go_llama_predict_free(struct go_llama_predict_state * p_state);
 extern char *predictorInputCallback(struct go_llama_predict_state *state);
 extern void predictorOutputCallback(struct go_llama_predict_state *state, cchar_t *);
 extern void predictorEndOutputCallback(struct go_llama_predict_state *state);

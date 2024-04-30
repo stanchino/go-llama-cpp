@@ -23,12 +23,15 @@ type GoLlama struct {
 	Options *options.Options
 }
 
-func NewGoLlama(options *options.Options) *GoLlama {
-	state := C.go_llama_init(options.ToInitParams())
-	return &GoLlama{
-		State:   unsafe.Pointer(state),
-		Options: options,
+func NewGoLlama(options *options.Options) (*GoLlama, error) {
+	params, err := options.ToInitParams()
+	if err != nil {
+		return nil, err
 	}
+	return &GoLlama{
+		State:   unsafe.Pointer(C.go_llama_init(params)),
+		Options: options,
+	}, nil
 }
 
 func (l *GoLlama) Free() {

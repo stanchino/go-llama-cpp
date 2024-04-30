@@ -1,4 +1,4 @@
-model: ../../Development/models/NousResearch_Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf
+model: ~/Development/models/NousResearch_Meta-Llama-3-8B-Instruct-GGUF/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf
 contextSize: 4096
 useMMap: false
 #interactive: false
