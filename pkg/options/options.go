@@ -12,7 +12,7 @@ import "C"
 import (
 	"errors"
 	"fmt"
-	"github.com/stanchino/go-llama-cpp/pkg/util"
+	"github.com/creasty/defaults"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"
@@ -25,7 +25,12 @@ type Options struct {
 	Model            string   `json:"model,omitempty" yaml:"model"`
 	Prompt           string   `json:"prompt,omitempty" yaml:"prompt"`
 	UseMMap          bool     `json:"useMMap,omitempty" yaml:"useMMap"`
-	ContextSize      int      `json:"contextSize,omitempty" yaml:"contextSize"`
+	ContextSize      int      `default:"512" json:"contextSize,omitempty" yaml:"contextSize"`
+	NumPredict       int      `default:"-1" json:"numPredict,omitempty" yaml:"numPredict"`
+	BatchSize        int      `default:"2048" json:"batchSize,omitempty" yaml:"batchSize"`
+	GroupAttnFactor  int      `default:"1" json:"groupAttnFactor,omitempty" yaml:"groupAttnFactor"`
+	GroupAttnWeight  int      `default:"512" json:"groupAttnWeight,omitempty" yaml:"groupAttnWeight"`
+	NumKeep          int      `default:"0" json:"numKeep,omitempty" yaml:"numKeep"`
 	RopeFreqBase     float64  `json:"ropeFreqBase,omitempty" yaml:"ropeFreqBase"`
 	RopeFreqScale    float64  `json:"ropeFreqScale,omitempty" yaml:"ropeFreqScale"`
 	Interactive      bool     `json:"interactive,omitempty" yaml:"interactive"`
@@ -37,7 +42,6 @@ type Options struct {
 	Template         string   `json:"template,omitempty" yaml:"template"`
 	AntiPrompts      []string `json:"antiPrompts,omitempty" yaml:"antiPrompts"`
 	EndOfTextPrompts []string `json:"endOfTextPrompts,omitempty" yaml:"endOfTextPrompts"`
-	prompt           string
 }
 
 func LoadConfig(configFile string) (*Options, error) {
@@ -50,6 +54,10 @@ func LoadConfig(configFile string) (*Options, error) {
 		return nil, fmt.Errorf("file %s not found: %s", configFile, err)
 	}
 	var opt Options
+	err = defaults.Set(&opt)
+	if err != nil {
+		return nil, fmt.Errorf("unable to set defaults: %s", err)
+	}
 	err = yaml.Unmarshal(yamlFile, &opt)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load configuration from file %s: %s", yamlFile, err)
@@ -117,14 +125,17 @@ func (o *Options) ToInitParams() (unsafe.Pointer, error) {
 		interactive_first: C.bool(o.InteractiveFirst),
 		display_prompt:    C.bool(o.DisplayPrompt),
 		n_ctx:             C.int(o.ContextSize),
-		rope_freq_base:    C.double(o.RopeFreqBase),
-		rope_freq_scale:   C.double(o.RopeFreqScale),
+		rope_freq_base:    C.float(o.RopeFreqBase),
+		rope_freq_scale:   C.float(o.RopeFreqScale),
 		input_prefix_bos:  C.bool(o.InputPrefixBos),
 		input_prefix:      C.CString(o.InputPrefix),
 		input_suffix:      C.CString(o.InputSuffix),
-		prompt:            C.CString(o.prompt),
-		anti_prompts:      (*C.charArray)(util.NewCharArray(o.AntiPrompts).Pointer),
-		eot_prompts:       (*C.charArray)(util.NewCharArray(o.EndOfTextPrompts).Pointer),
+		prompt:            C.CString(o.Prompt),
+		n_predict:         C.int(o.NumPredict),
+		n_batch:           C.int(o.BatchSize),
+		n_keep:            C.int(o.NumKeep),
+		grp_attn_n:        C.int(o.GroupAttnFactor),
+		grp_attn_w:        C.int(o.GroupAttnWeight),
 	}), nil
 }
 

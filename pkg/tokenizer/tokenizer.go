@@ -26,6 +26,14 @@ func NewTokenizer(l *llama.GoLlama) *Tokenizer {
 	}
 }
 
+func (t *Tokenizer) TokenBos() int {
+	return int(C.go_llama_token_bos((*C.struct_go_llama_state)(t.State)))
+}
+
+func (t *Tokenizer) AddBos() bool {
+	return bool(C.go_llama_should_add_bos_token((*C.struct_go_llama_state)(t.State)))
+}
+
 func (t *Tokenizer) Tokenize(text string, special ...bool) []int {
 	addSpecial := false
 	parseSpecial := false
@@ -36,18 +44,42 @@ func (t *Tokenizer) Tokenize(text string, special ...bool) []int {
 		addSpecial = special[0]
 		parseSpecial = special[1]
 	}
-	var tokenList C.tokens_list = C.go_llama_tokenize((*C.struct_go_llama_state)(t.State),
-		C.CString(text), C.bool(addSpecial), C.bool(parseSpecial))
+	tokenList := C.go_llama_tokenize(
+		(*C.struct_go_llama_state)(t.State),
+		C.CString(text),
+		C.bool(addSpecial),
+		C.bool(parseSpecial))
+	return t.ToSlice(unsafe.Pointer(&tokenList))
+
+}
+
+func (t *Tokenizer) ToSlice(tokenListPtr unsafe.Pointer) []int {
+	tokenList := (*C.tokens_list)(tokenListPtr)
 	tokens := unsafe.Slice(tokenList.tokens, tokenList.size)
 	result := make([]int, tokenList.size)
 	for i, t := range tokens {
 		result[i] = int(t)
 	}
-	C.free(unsafe.Pointer(tokenList.tokens))
 	return result
 }
 
+func (t *Tokenizer) ToTokensList(tokens []int) unsafe.Pointer {
+	result := make([]C.go_llama_token, len(tokens))
+	for i, t := range tokens {
+		result[i] = C.go_llama_token(t)
+	}
+	tokensList := C.tokens_list{
+		size:   C.ulong(len(tokens)),
+		tokens: &result[0],
+	}
+
+	return unsafe.Pointer(&tokensList)
+}
+
 func (t *Tokenizer) ToString(tokens []int) string {
+	if len(tokens) == 0 {
+		return ""
+	}
 	result := make([]C.go_llama_token, len(tokens))
 	for i, t := range tokens {
 		result[i] = C.go_llama_token(t)

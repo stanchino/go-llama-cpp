@@ -3,6 +3,7 @@
 #ifdef __cplusplus
 
 #include <fstream>
+#include "../tokenizer/tokenizer.h"
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -42,17 +43,22 @@ typedef struct go_llama_predict_state {
     bool is_interacting;
     bool input_echo;
     bool display;
-    void * embeddings;
+    //void * embeddings;
 } go_llama_predict_state;
 
 typedef const char cchar_t;
+void go_llama_sampling_reset(struct go_llama_predict_state * state);
 struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_state * o_state);
-void go_llama_set_prompt(struct go_llama_state * state, struct go_llama_predict_state * p_state, const char * prompt);
-int go_llama_predict(struct go_llama_state *state, struct go_llama_predict_state *p_state);
+bool go_llama_token_is_eog(struct go_llama_state *state, int id);
+void go_llama_sampling_init(struct go_llama_predict_state * p_state);
+int go_llama_sampling_sample(struct go_llama_state * state, struct go_llama_predict_state * p_state);
+void go_llama_sampling_accept(struct go_llama_state * state, struct go_llama_predict_state * p_state, int id, bool apply_grammar);
+int go_llama_decode_batch(struct go_llama_state * state, tokens_list tokens, int i, int n_eval, int n_past);
+tokens_list * go_llama_sampling_prev(struct go_llama_predict_state * p_state);
+void go_llama_kv_cache_seq_rm(struct go_llama_state * state, int seq_id, int p0, int p1);
+void go_llama_kv_cache_seq_add(struct go_llama_state * state, int seq_id, int p0, int p1, int delta);
+void go_llama_kv_cache_seq_div(struct go_llama_state * state, int seq_id, int p0, int p1, int d);
 void go_llama_predict_free(struct go_llama_predict_state * p_state);
-extern char *predictorInputCallback(struct go_llama_predict_state *state);
-extern void predictorOutputCallback(struct go_llama_predict_state *state, cchar_t *);
-extern void predictorEndOutputCallback(struct go_llama_predict_state *state);
 #ifdef __cplusplus
 }
 #endif

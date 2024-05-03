@@ -1,5 +1,4 @@
 #include "predictor.h"
-#include "../llama/llama.h"
 #include "../../includes/common.h"
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
@@ -58,6 +57,7 @@ bool token_is_eog(llama_model *model, std::vector<llama_token> eot_ids, llama_to
     return is_eog;
 }
 
+/*
 std::vector<llama_token> generate_eot_ids(struct go_llama_state *state) {
     std::vector<llama_token> eot_ids;
     if (state->init_params->eot_prompts) {
@@ -94,7 +94,6 @@ bool token_is_anti_prompt(struct go_llama_state *state, llama_token token,
     }
     return is_anti_prompt;
     // check for reverse prompt in the last n_prev tokens
-    /*
     llama_sampling_context *ctx_sampling = state->ctx_sampling;
     if (!params.antiprompt.empty()) {
         const int n_prev = 64;
@@ -116,9 +115,8 @@ bool token_is_anti_prompt(struct go_llama_state *state, llama_token token,
         }
     }
     return false;
-    */
 }
-
+*/
 /*
 void prepare_params(struct go_llama_predict_state * p_state) {
     if (p_state->params->n_ctx != 0 && p_state->params->n_ctx < 8) {
@@ -172,9 +170,30 @@ void prepare_params(struct go_llama_predict_state * p_state) {
 }
 */
 
+bool go_llama_token_is_eog(struct go_llama_state *state, int id) {
+    return llama_token_is_eog(state->model, id);
+}
+
+void go_llama_sampling_reset(struct go_llama_predict_state * state) {
+    llama_sampling_reset(state->ctx_sampling);
+}
+
+/*
+void go_llama_set_n_keep(struct go_llama_state * state, struct go_llama_predict_state * p_state, int embd_in_size) {
+    const bool add_bos = llama_should_add_bos_token(state->model);
+    if (p_state->params->n_keep<0 || p_state->params->n_keep>embd_in_size) {
+        p_state->params->n_keep = embd_in_size;
+    } else {
+        p_state->params->n_keep += add_bos; // always keep the BOS token
+    }
+}
+
 void go_llama_set_prompt(struct go_llama_state * state, struct go_llama_predict_state * p_state, const char * prompt) {
     p_state->params->prompt = prompt;
-    auto emb = (embeddings *) p_state->embeddings;
+
+    // print system information
+    LOG("\n%s\n", get_system_info(*p_state->params).c_str());
+    // auto emb = (embeddings *) p_state->embeddings;
     // Tokenize the prompt
     if (!p_state->params->prompt.empty()) {
         LOG("tokenize the prompt\n");
@@ -201,14 +220,15 @@ void go_llama_set_prompt(struct go_llama_state * state, struct go_llama_predict_
     // print system information
     LOG("\n%s\n", get_system_info(*p_state->params).c_str());
 }
+*/
 
 struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_state * state) {
     auto p_state = new(go_llama_predict_state);
-    auto emb = new(embeddings);
+    // auto emb = new(embeddings);
     p_state->params = state->params;
     p_state->n_total_consumed = 0;
     p_state->n_past = 0;
-    p_state->n_remain = 0;
+    p_state->n_remain = p_state->params->n_predict;
     p_state->n_past_guidance = 0;
     p_state->guidance_offset = 0;
     p_state->original_prompt_len = 0;
@@ -225,11 +245,6 @@ struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_stat
     const int n_ctx_train = llama_n_ctx_train(state->model);
     p_state->n_ctx = llama_n_ctx(state->ctx);
     LOG("n_ctx: %d\n", p_state->n_ctx);
-
-    p_state->n_remain = p_state->params->n_predict;
-    p_state->display = p_state->params->display_prompt;
-    emb->eot_ids = generate_eot_ids(state);
-    emb->anti_prompt_ids = generate_anti_prompt_ids(state);
 
     if (p_state->n_ctx > n_ctx_train) {
         LOG("%s: warning: model was trained on only %d context tokens (%d specified)\n",
@@ -253,7 +268,7 @@ struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_stat
         //GGML_ASSERT(n_ctx >= n_ctx_train * ga_n && "n_ctx must be at least n_ctx_train * grp_attn_n"); // NOLINT
         LOG("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, p_state->params->grp_attn_n, p_state->params->grp_attn_w);
     }
-
+    /*
     if (sparams.cfg_scale > 1.f) {
         struct llama_context_params lparams = llama_context_params_from_gpt_params(*p_state->params);
         p_state->ctx_guidance = llama_new_context_with_model(state->model, lparams);
@@ -272,10 +287,117 @@ struct go_llama_predict_state * go_llama_init_predict_state(struct go_llama_stat
         LOG("original_prompt_len: %s", log_tostr(p_state->original_prompt_len));
         LOG("guidance_offset:     %s", log_tostr(p_state->guidance_offset));
     }
-    p_state->embeddings = (void *) emb;
+    */
+    // p_state->embeddings = (void *) emb;
     return p_state;
 }
 
+void go_llama_sampling_init(struct go_llama_predict_state * p_state) {
+    llama_numa_init(p_state->params->numa);
+    p_state->ctx_sampling = llama_sampling_init(p_state->params->sparams);
+}
+int go_llama_sampling_sample(struct go_llama_state * state, struct go_llama_predict_state * p_state) {
+    return llama_sampling_sample(p_state->ctx_sampling, state->ctx, p_state->ctx_guidance);
+}
+void go_llama_sampling_accept(struct go_llama_state * state, struct go_llama_predict_state * p_state, int id, bool apply_grammar) {
+    llama_sampling_accept(p_state->ctx_sampling, state->ctx, id, apply_grammar);
+}
+
+tokens_list * go_llama_sampling_prev(struct go_llama_predict_state * p_state) {
+    auto result = new(tokens_list);
+    result->size =  p_state->ctx_sampling->prev.size();
+    result->tokens =  p_state->ctx_sampling->prev.data();
+    return result;
+}
+
+void go_llama_kv_cache_seq_rm(struct go_llama_state * state, int seq_id, int p0, int p1) {
+    llama_kv_cache_seq_rm(state->ctx, seq_id, p0, p1);
+}
+
+void go_llama_kv_cache_seq_add(struct go_llama_state * state, int seq_id, int p0, int p1, int delta) {
+    llama_kv_cache_seq_add(state->ctx, seq_id, p0, p1, delta);
+}
+
+void go_llama_kv_cache_seq_div(struct go_llama_state * state, int seq_id, int p0, int p1, int d) {
+    llama_kv_cache_seq_div(state->ctx, seq_id, p0, p1, d);
+}
+int go_llama_decode_batch(struct go_llama_state * state, tokens_list tokens, int i, int n_eval, int n_past) {
+    if (llama_decode(state->ctx, llama_batch_get_one(&tokens.tokens[i], n_eval, n_past, 0))) {
+        LOG("%s : failed to eval\n", __func__);
+        return 1;
+    }
+    return 0;
+    // printf("eval: %s, i: %i, n_eval: %i, n_past: %i\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, embd).c_str(), i, n_eval, n_past);
+    //LOG("\neval: %s, i: %i, n_eval: %i, n_past: %i\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, embd).c_str(), i, n_eval, n_past);
+}
+
+/*
+int go_llama_context_extend(struct go_llama_state * state, struct go_llama_predict_state * p_state, int emb_size) {
+    // Ensure the output doesn't exceed the context size by truncating embd_guidance if necessary
+    if (p_state->params->grp_attn_n == 1) {
+        // infinite text generation via context shifting
+        // if we run out of context:
+        // - take the n_keep first tokens from the original prompt (via p_state->n_past)
+        // - take half of the last (p_state.n_ctx - n_keep) tokens and recompute the logits in batches
+        if (p_state->n_past + emb_size + std::max<unsigned int>(0, p_state->guidance_offset) > p_state->n_ctx) {
+            if (p_state->params->n_predict == -2) {
+                LOG("\n\n%s: context full and n_predict == -%d => stopping\n", __func__, p_state->params->n_predict);
+                return -1;
+            }
+
+            const int n_left = p_state->n_past - p_state->params->n_keep;
+            const int n_discard = n_left / 2;
+
+            LOG("context full, swapping: p_state->n_past = %d, n_left = %d, p_state.n_ctx = %d, n_keep = %d, n_discard = %d\n",
+                p_state->n_past, n_left, p_state->n_ctx, p_state->params->n_keep, n_discard);
+
+            llama_kv_cache_seq_rm(state->ctx, 0, p_state->params->n_keep, p_state->params->n_keep + n_discard);
+            llama_kv_cache_seq_add(state->ctx, 0, p_state->params->n_keep + n_discard, p_state->n_past, -n_discard);
+
+            p_state->n_past -= n_discard;
+
+            if (p_state->ctx_guidance) {
+                p_state->n_past_guidance -= n_discard;
+            }
+
+            LOG("after swap: p_state->n_past = %d, p_state->p_state->n_past_guidance = %d\n", p_state->n_past, p_state->n_past_guidance);
+
+            LOG("p_state->embd_full: %s\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, emb->embd_full).c_str());
+
+            LOG("clear session path\n");
+        }
+    } else {
+        // context extension via Self-Extend
+        // group-attention state
+        // number of grouped KV tokens so far (used only if p_state->params->grp_attn_n > 1)
+        const int ga_w = p_state->params->grp_attn_w;
+        const int ga_n = p_state->params->grp_attn_n;
+        int ga_i = 0;
+        while (p_state->n_past >= ga_i + ga_w) {
+            const int ib = (ga_n * ga_i) / ga_w;
+            const int bd = (ga_w / ga_n) * (ga_n - 1);
+            const int dd = (ga_w / ga_n) - ib * bd - ga_w;
+
+            LOG("\n");
+            LOG("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", ga_i, p_state->n_past, ib * bd, ga_i + ib * bd,
+                p_state->n_past + ib * bd);
+            LOG("div:   [%6d, %6d] / %6d -> [%6d, %6d]\n", ga_i + ib * bd, ga_i + ib * bd + ga_w, ga_n,
+                (ga_i + ib * bd) / ga_n, (ga_i + ib * bd + ga_w) / ga_n);
+            LOG("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", ga_i + ib * bd + ga_w, p_state->n_past + ib * bd, dd,
+                ga_i + ib * bd + ga_w + dd, p_state->n_past + ib * bd + dd);
+
+            llama_kv_cache_seq_add(state->ctx, 0, ga_i, p_state->n_past, ib * bd);
+            llama_kv_cache_seq_div(state->ctx, 0, ga_i + ib * bd, ga_i + ib * bd + ga_w, ga_n);
+            llama_kv_cache_seq_add(state->ctx, 0, ga_i + ib * bd + ga_w, p_state->n_past + ib * bd, dd);
+
+            p_state->n_past -= bd;
+
+            ga_i += ga_w / ga_n;
+
+            LOG("\np_state->n_past_old = %d, p_state->n_past = %d, ga_i = %d\n\n", p_state->n_past + bd, p_state->n_past, ga_i);
+        }
+    }
+}
 int predict_embeddings(struct go_llama_state *state, struct go_llama_predict_state * p_state) {
     auto emb = (struct embeddings *) p_state->embeddings;
     // Note: (p_state.n_ctx - 4) here is to match the logic for commandline prompt handling via
@@ -404,7 +526,7 @@ int predict_embeddings(struct go_llama_state *state, struct go_llama_predict_sta
             n_eval = p_state->params->n_batch;
         }
 
-        LOG("eval: %s\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, emb->embd_full).c_str());
+        LOG("eval: %s, i: %i, n_eval: %i, n_past: %i\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, emb->embd_full).c_str(), i, n_eval, p_state->n_past);
 
         if (llama_decode(state->ctx, llama_batch_get_one(&emb->embd_full[i], n_eval, p_state->n_past, 0))) {
             LOG("%s : failed to eval\n", __func__);
@@ -413,7 +535,7 @@ int predict_embeddings(struct go_llama_state *state, struct go_llama_predict_sta
 
         p_state->n_past += n_eval;
 
-        LOG("p_state->n_past = %d\n", p_state->n_past);
+        LOG("n_past = %d\n", p_state->n_past);
         // Display total tokens alongside total time
         if (p_state->params->n_print > 0 && p_state->n_past % p_state->params->n_print == 0) {
             LOG("%sTokens consumed so far = %d / %d %s\n", ANSI_COLOR_BLUE, p_state->n_past, p_state->n_ctx, ANSI_COLOR_RESET);
@@ -620,7 +742,7 @@ int go_llama_predict(struct go_llama_state * state_ptr, struct go_llama_predict_
     //TODO: save output tokens to the session tokens
     return 0;
 }
-
+*/
 void go_llama_predict_free(struct go_llama_predict_state * p_state) {
     if (p_state->ctx_guidance) { llama_free(p_state->ctx_guidance); }
     if (p_state->ctx_sampling) llama_sampling_free(p_state->ctx_sampling);
