@@ -8,7 +8,7 @@
 
 extern "C" {
 #endif
-typedef int32_t go_llama_token;
+typedef int go_llama_token;
 typedef struct tokens_list {
     unsigned long size;
     go_llama_token *tokens;
