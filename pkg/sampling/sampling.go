@@ -5,7 +5,6 @@ package sampling
 #cgo CXXFLAGS: -std=c++11
 #include <stdbool.h>
 #include "../llama/llama.h"
-#include "sampling.h"
 */
 import "C"
 import (
@@ -24,11 +23,11 @@ func NewSampling(state unsafe.Pointer) *Sampling {
 }
 
 func (s *Sampling) Init() {
-	C.go_llama_sampling_init((*C.struct_go_llama_state)(s.State))
+	state := (*C.go_llama_state)(s.State)
+	state.ctx_sampling = C.go_llama_sampling_init((*C.go_llama_state)(s.State))
 }
 func (s *Sampling) Sample() int {
-	return int(C.go_llama_sampling_sample(
-		(*C.go_llama_state)(s.State)))
+	return int(C.go_llama_sampling_sample((*C.go_llama_state)(s.State)))
 }
 func (s *Sampling) Accept(id int, applyGrammar bool) {
 	C.go_llama_sampling_accept(

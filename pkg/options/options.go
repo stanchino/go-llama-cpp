@@ -4,7 +4,7 @@ package options
 #cgo CFLAGS: -std=c11
 #cgo CXXFLAGS: -std=c++11
 #include <stdbool.h>
-#include "options.h"
+#include "../llama/llama.h"
 */
 import "C"
 import "C"

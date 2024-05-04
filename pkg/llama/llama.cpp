@@ -1,14 +1,12 @@
 #include "../../includes/common.h"
-#include "../options/options.h"
 #include "llama.h"
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
-
+/*
 struct go_llama_state *go_llama_init(void *params_ptr) {
-    auto p = (go_llama_params *) params_ptr;
-    auto params = (gpt_params *) go_llama_params_to_gpt_params(*p);
+    auto params = (gpt_params *) params_ptr;
     auto mparams = llama_model_params_from_gpt_params(*params);
     llama_model *model;
 
@@ -67,7 +65,6 @@ struct go_llama_state *go_llama_init(void *params_ptr) {
         //GGML_ASSERT(n_ctx >= n_ctx_train * ga_n && "n_ctx must be at least n_ctx_train * grp_attn_n"); // NOLINT
         LOG("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, state->params->grp_attn_n, state->params->grp_attn_w);
     }
-    /*
     if (sparams.cfg_scale > 1.f) {
         struct llama_context_params lparams = llama_context_params_from_gpt_params(*p_state->params);
         p_state->ctx_guidance = llama_new_context_with_model(state->model, lparams);
@@ -86,10 +83,103 @@ struct go_llama_state *go_llama_init(void *params_ptr) {
         LOG("original_prompt_len: %s", log_tostr(p_state->original_prompt_len));
         LOG("guidance_offset:     %s", log_tostr(p_state->guidance_offset));
     }
-    */
     return state;
 }
+*/
+// context warmup
+void go_llama_synchronize(struct go_llama_state *state) {
+    llama_synchronize(state->ctx);
+}
+void go_llama_reset_timings(struct go_llama_state *state) {
+    llama_reset_timings(state->ctx);
+}
+// cache
+void go_llama_kv_cache_seq_rm(struct go_llama_state * state, int seq_id, int p0, int p1) {
+    llama_kv_cache_seq_rm(state->ctx, seq_id, p0, p1);
+}
+void go_llama_kv_cache_seq_add(struct go_llama_state * state, int seq_id, int p0, int p1, int delta) {
+    llama_kv_cache_seq_add(state->ctx, seq_id, p0, p1, delta);
+}
+void go_llama_kv_cache_seq_div(struct go_llama_state * state, int seq_id, int p0, int p1, int d) {
+    llama_kv_cache_seq_div(state->ctx, seq_id, p0, p1, d);
+}
+void go_llama_kv_cache_clear(struct go_llama_state * state) {
+    llama_kv_cache_clear(state->ctx);
+}
+// decoding
+int go_llama_decode_batch(struct go_llama_state * state, tokens_list tokens, int i, int n_eval, int n_past) {
+    if (llama_decode(state->ctx, llama_batch_get_one(&tokens.tokens[i], n_eval, n_past, 0))) {
+        LOG("%s : failed to eval\n", __func__);
+        return 1;
+    }
+    return 0;
+}
+// sampling
+struct llama_sampling_context * go_llama_sampling_init(struct go_llama_state * state) {
+    llama_numa_init(state->params->numa);
+    return llama_sampling_init(state->params->sparams);
+}
+int go_llama_sampling_sample(struct go_llama_state * state) {
+    return llama_sampling_sample(state->ctx_sampling, state->ctx, state->ctx_guidance);
+}
+void go_llama_sampling_accept(struct go_llama_state * state, int id, bool apply_grammar) {
+    printf("ctx %d", state != nullptr);
+    llama_sampling_accept(state->ctx_sampling, state->ctx, id, apply_grammar);
+}
+tokens_list * go_llama_sampling_prev(struct go_llama_state * state) {
+    auto result = new(tokens_list);
+    result->size =  state->ctx_sampling->prev.size();
+    result->tokens =  state->ctx_sampling->prev.data();
+    return result;
+}
+void go_llama_sampling_reset(struct go_llama_state * state) {
+    llama_sampling_reset(state->ctx_sampling);
+}
+// state
+void *go_llama_params_to_gpt_params(void *p_ptr) {
+    auto p = *(go_llama_params *) p_ptr;
+    gpt_params params;
+    auto params_ptr = (gpt_params *) malloc(sizeof(gpt_params));
+    params.model = p.model;
+    params.use_mmap = p.use_mmap;
+    params.interactive = p.interactive;
+    params.interactive_first = p.interactive_first;
+    params.input_prefix_bos = p.input_prefix_bos;
+    params.input_prefix = p.input_prefix;
+    params.input_suffix = p.input_suffix;
+    params.display_prompt = p.display_prompt;
+    params.prompt = p.prompt;
+    params.n_predict = p.n_predict;
+    params.n_batch = p.n_batch;
+    params.grp_attn_n = p.grp_attn_n;
+    params.grp_attn_w = p.grp_attn_w;
+    params.n_keep = p.n_keep;
+    if (p.n_ctx > 0) {
+        params.n_ctx = p.n_ctx;
+    }
+    if (p.rope_freq_base > 0) {
+        params.rope_freq_base = p.rope_freq_base;
+    }
+    if (p.rope_freq_scale > 0) {
+        params.rope_freq_scale = p.rope_freq_scale;
+    }
+    *params_ptr = params;
+    return (void *) params_ptr;
+}
 
+void go_llama_backend_init() {
+    llama_backend_init();
+}
+llama_model * go_llama_load_model_from_file(void *params_ptr) {
+    auto params = (gpt_params *) params_ptr;
+    auto mparams = llama_model_params_from_gpt_params(*params);
+    return llama_load_model_from_file(params->model.c_str(), mparams);
+}
+llama_context * go_llama_new_context_with_model(llama_model * model, void *params_ptr) {
+    auto params = (gpt_params *) params_ptr;
+    auto cparams = llama_context_params_from_gpt_params(*params);
+    return llama_new_context_with_model(model, cparams);
+}
 void go_llama_free(struct go_llama_state *state) {
     llama_print_timings(state->ctx);
     llama_free(state->ctx);
@@ -98,4 +188,42 @@ void go_llama_free(struct go_llama_state *state) {
     if (state->ctx_guidance) { llama_free(state->ctx_guidance); }
     if (state->ctx_sampling) llama_sampling_free(state->ctx_sampling);
     free(state->params);
+}
+// tokenize
+bool go_llama_token_is_eog(struct go_llama_state *state, int id) {
+    return llama_token_is_eog(state->model, id);
+}
+
+struct tokens_list
+go_llama_tokenize(struct go_llama_state *state, const char *prompt, bool add_special, bool parse_special) {
+    std::vector<llama_token> tokens = llama_tokenize(state->ctx, prompt, add_special, parse_special);
+    unsigned int size = tokens.size();
+    struct tokens_list list = {
+            tokens.size(),
+            (go_llama_token *) malloc(sizeof(llama_token) * size)
+    };
+    for (unsigned int i = 0; i < size; i++) {
+        list.tokens[i] = tokens[i];
+    }
+    return list;
+}
+
+const char * go_llama_token_to_piece(struct go_llama_state *state, const llama_token *tokens, unsigned int size) {
+    std::string token_str;
+    for (unsigned int i = 0; i < size; i++) {
+        token_str.append(llama_token_to_piece(state->ctx, tokens[i]));
+    }
+    unsigned long token_str_size = token_str.size();
+    char *res = (char *) malloc(token_str_size + 1);
+    strncpy(res, token_str.c_str(), token_str_size);
+    return res;
+}
+go_llama_token go_llama_token_еos(struct go_llama_state *state) {
+    return llama_token_eos(state->model);
+}
+go_llama_token go_llama_token_bos(struct go_llama_state *state) {
+    return llama_token_bos(state->model);
+}
+bool go_llama_should_add_bos_token(struct go_llama_state *state) {
+    return llama_should_add_bos_token(state->model);
 }

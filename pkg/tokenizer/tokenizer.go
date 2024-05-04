@@ -6,7 +6,6 @@ package tokenizer
 #include <stdlib.h>
 #include <stdbool.h>
 #include "../llama/llama.h"
-#include "tokenizer.h"
 */
 import "C"
 import "unsafe"
@@ -23,6 +22,10 @@ func NewTokenizer(state unsafe.Pointer) *Tokenizer {
 
 func (t *Tokenizer) TokenBos() int {
 	return int(C.go_llama_token_bos((*C.struct_go_llama_state)(t.State)))
+}
+
+func (t *Tokenizer) TokenEos() int {
+	return int(C.go_llama_token_еos((*C.struct_go_llama_state)(t.State)))
 }
 
 func (t *Tokenizer) AddBos() bool {

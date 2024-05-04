@@ -6,7 +6,6 @@ package cache
 #include <stdlib.h>
 #include <stdbool.h>
 #include "../llama/llama.h"
-#include "cache.h"
 */
 import "C"
 import "unsafe"
@@ -31,4 +30,8 @@ func (c *Cache) Add(seqId int, p0 int, p1 int, delta int) {
 
 func (c *Cache) Div(seqId int, p0 int, p1 int, d int) {
 	C.go_llama_kv_cache_seq_div((*C.go_llama_state)(c.State), C.int(seqId), C.int(p0), C.int(p1), C.int(d))
+}
+
+func (c *Cache) Clear() {
+	C.go_llama_kv_cache_clear((*C.go_llama_state)(c.State))
 }

@@ -6,7 +6,6 @@ package decoder
 #include <stdlib.h>
 #include <stdbool.h>
 #include "../llama/llama.h"
-#include "decoder.h"
 */
 import "C"
 import (

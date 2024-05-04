@@ -22,6 +22,7 @@ import (
 	"github.com/stanchino/go-llama-cpp/pkg/decoder"
 	"github.com/stanchino/go-llama-cpp/pkg/options"
 	"github.com/stanchino/go-llama-cpp/pkg/sampling"
+	"github.com/stanchino/go-llama-cpp/pkg/state"
 	"github.com/stanchino/go-llama-cpp/pkg/tokenizer"
 )
 
@@ -35,20 +36,31 @@ type GoLlama struct {
 }
 
 func NewGoLlama(opt *options.Options) (*GoLlama, error) {
-	params, err := opt.Params()
+	s, err := state.NewState(opt)
 	if err != nil {
 		return nil, err
 	}
-	state := unsafe.Pointer(C.go_llama_init(params))
 
-	return &GoLlama{
+	l := &GoLlama{
 		Options:   opt,
-		State:     state,
-		Cache:     cache.NewCache(state),
-		Decoder:   decoder.NewDecoder(state),
-		Sampling:  sampling.NewSampling(state),
-		Tokenizer: tokenizer.NewTokenizer(state),
-	}, nil
+		State:     s,
+		Cache:     cache.NewCache(s),
+		Decoder:   decoder.NewDecoder(s),
+		Sampling:  sampling.NewSampling(s),
+		Tokenizer: tokenizer.NewTokenizer(s),
+	}
+
+	l.WarmUp()
+	return l, nil
+}
+
+func (l *GoLlama) WarmUp() {
+	log.Println("warming up the model with an empty ru")
+	tmp := []int{l.Tokenizer.TokenBos(), l.Tokenizer.TokenEos()}
+	_ = l.Decoder.DecodeBatch(l.Tokenizer.ToTokensList(tmp), len(tmp), 0, 0)
+	l.Cache.Clear()
+	C.go_llama_synchronize((*C.go_llama_state)(l.State))
+	C.go_llama_reset_timings((*C.go_llama_state)(l.State))
 }
 
 func (l *GoLlama) StringifyTokens(tokens []int) string {
@@ -143,5 +155,4 @@ func (l *GoLlama) DecodeInBatches(emb []int, past int, batchSize int) (int, erro
 
 func (l *GoLlama) Free() {
 	C.go_llama_free((*C.struct_go_llama_state)(l.State))
-	C.free(l.State)
 }
