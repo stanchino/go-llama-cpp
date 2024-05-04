@@ -4,10 +4,9 @@ package options
 #cgo CFLAGS: -std=c11
 #cgo CXXFLAGS: -std=c++11
 #include <stdbool.h>
-#include <stdlib.h>
 #include "options.h"
-#include "../util/util.h"
 */
+import "C"
 import "C"
 import (
 	"errors"
@@ -114,7 +113,14 @@ func (o *Options) Prepare() error {
 	return nil
 }
 
-func (o *Options) ToInitParams() (unsafe.Pointer, error) {
+func (o *Options) ApplyTemplate(str string) string {
+	if o.Template == "" || str == "" {
+		return str
+	}
+	return fmt.Sprintf(o.Template, str)
+}
+
+func (o *Options) Params() (unsafe.Pointer, error) {
 	if ok := o.Prepare(); ok != nil {
 		return nil, ok
 	}
@@ -137,11 +143,4 @@ func (o *Options) ToInitParams() (unsafe.Pointer, error) {
 		grp_attn_n:        C.int(o.GroupAttnFactor),
 		grp_attn_w:        C.int(o.GroupAttnWeight),
 	}), nil
-}
-
-func (o *Options) ApplyTemplate(str string) string {
-	if o.Template == "" || str == "" {
-		return str
-	}
-	return fmt.Sprintf(o.Template, str)
 }

@@ -12,12 +12,6 @@ import (
 	"os"
 )
 
-type InteractivePredictor struct {
-	*predictor.Predictor
-	IsInteracting bool
-	IsExiting     bool
-}
-
 func main() {
 	config := flag.String("c", "", "Provide a path to the config file")
 	flag.Parse()
@@ -49,6 +43,7 @@ func main() {
 	p.SetInputCallback(func() string {
 		fmt.Printf("\n%s>", examples.AnsiColorGreen)
 		scanner.Scan()
+		fmt.Printf("%s", examples.AnsiColorReset)
 		return scanner.Text()
 	})
 	go func() {
@@ -85,7 +80,7 @@ func (p *InteractivePredictor) Predict() error {
 	}
 	log.Println("Start prediction loop")
 	var err error
-	for !p.IsExiting && (remain != 0 && !isAntiPrompt) {
+	for !p.Exit && (remain != 0 && !isAntiPrompt) {
 		if len(emb) > 0 {
 			past, err = p.DecodeInBatches(emb, past, batchSize)
 			if err != nil {

@@ -1,5 +1,6 @@
-#include "llama.h"
 #include "../../includes/common.h"
+#include "../options/options.h"
+#include "llama.h"
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
@@ -40,32 +41,61 @@ struct go_llama_state *go_llama_init(void *params_ptr) {
     state->ctx = ctx;
     state->model = model;
     state->params = params;
-    state->init_params = p;
+
+    LOG("%s: build = %d (%s)\n", __func__, LLAMA_BUILD_NUMBER, LLAMA_COMMIT);
+    LOG("%s: built with %s for %s\n", __func__, LLAMA_COMPILER, LLAMA_BUILD_TARGET);
+    if (state->params->seed == LLAMA_DEFAULT_SEED) {
+        state->params->seed = time(nullptr);
+    }
+    LOG("%s: seed  = %u\n", __func__, state->params->seed);
+    const int n_ctx_train = llama_n_ctx_train(state->model);
+
+    //TODO: Setup session tokens
+
+    GGML_ASSERT(llama_add_eos_token(state->model) != 1);
+    //TODO: If session tokens are found check if prompt matches any of the session tokens
+    llama_sampling_params &sparams = state->params->sparams;
+    LOG("sampling: \n%s\n", llama_sampling_print(sparams).c_str());
+    LOG("sampling order: \n%s\n", llama_sampling_order_print(sparams).c_str());
+    LOG("generate: n_ctx = %d, n_batch = %d, n_predict = %d, n_keep = %d\n", state->params->n_ctx, state->params->n_batch,
+        state->params->n_predict, state->params->n_keep);
+
+    if (state->params->grp_attn_n != 1) {
+        GGML_ASSERT(state->params->grp_attn_n > 0 && "grp_attn_n must be positive");                     // NOLINT
+        GGML_ASSERT(state->params->grp_attn_w % state->params->grp_attn_n == 0 && "grp_attn_w must be a multiple of grp_attn_n");     // NOLINT
+        //GGML_ASSERT(n_ctx_train % ga_w == 0     && "n_ctx_train must be a multiple of grp_attn_w");    // NOLINT
+        //GGML_ASSERT(n_ctx >= n_ctx_train * ga_n && "n_ctx must be at least n_ctx_train * grp_attn_n"); // NOLINT
+        LOG("self-extend: n_ctx_train = %d, grp_attn_n = %d, grp_attn_w = %d\n", n_ctx_train, state->params->grp_attn_n, state->params->grp_attn_w);
+    }
+    /*
+    if (sparams.cfg_scale > 1.f) {
+        struct llama_context_params lparams = llama_context_params_from_gpt_params(*p_state->params);
+        p_state->ctx_guidance = llama_new_context_with_model(state->model, lparams);
+
+        // Tokenize negative prompt
+        LOG("cfg_negative_prompt: \"%s\"\n", log_tostr(sparams.cfg_negative_prompt));
+
+        emb->guidance_inp = ::llama_tokenize(p_state->ctx_guidance, sparams.cfg_negative_prompt, true, true);
+        LOG("guidance_inp tokenized: %s\n", LOG_TOKENS_TOSTR_PRETTY(p_state->ctx_guidance, emb->guidance_inp).c_str());
+
+        std::vector<llama_token> original_inp = ::llama_tokenize(state->ctx, p_state->params->prompt, true, true);
+        LOG("original_inp tokenized: %s\n", LOG_TOKENS_TOSTR_PRETTY(state->ctx, original_inp).c_str());
+
+        p_state->original_prompt_len = original_inp.size();
+        p_state->guidance_offset = emb->guidance_inp.size() - p_state->original_prompt_len;
+        LOG("original_prompt_len: %s", log_tostr(p_state->original_prompt_len));
+        LOG("guidance_offset:     %s", log_tostr(p_state->guidance_offset));
+    }
+    */
     return state;
 }
-
-/*
-int go_llama_set_adapters(char ** adapters, int size) {
-    for (int i = 0; i < size; ++i) {
-        const std::string & lora_adapter = adapters[i];
-        int err = llama_model_apply_lora_from_file(g_model,
-                                                   lora_adapter.c_str(),
-                                                   1.0f,
-                                                   nullptr,
-                                                   (int) g_ctx_params.n_threads);
-        if (err != 0) {
-            fprintf(stderr, "%s: error: failed to apply lora adapter\n", __func__);
-            return err;
-        }
-    }
-    return 0;
-}
-*/
 
 void go_llama_free(struct go_llama_state *state) {
     llama_print_timings(state->ctx);
     llama_free(state->ctx);
     llama_free_model(state->model);
     llama_backend_free();
+    if (state->ctx_guidance) { llama_free(state->ctx_guidance); }
+    if (state->ctx_sampling) llama_sampling_free(state->ctx_sampling);
     free(state->params);
 }

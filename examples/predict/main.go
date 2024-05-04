@@ -1,50 +1,50 @@
 package main
 
 import (
-    "flag"
-    "fmt"
-    "github.com/stanchino/go-llama-cpp/examples"
-    "github.com/stanchino/go-llama-cpp/pkg/llama"
-    "github.com/stanchino/go-llama-cpp/pkg/options"
-    "github.com/stanchino/go-llama-cpp/pkg/predictor"
-    "log"
+	"flag"
+	"fmt"
+	"github.com/stanchino/go-llama-cpp/examples"
+	"github.com/stanchino/go-llama-cpp/pkg/llama"
+	"github.com/stanchino/go-llama-cpp/pkg/options"
+	"github.com/stanchino/go-llama-cpp/pkg/predictor"
+	"log"
 )
 
 func main() {
-    config := flag.String("c", "", "Provide a path to the config file")
-    prompt := flag.String("p", "", "Provide a prompt")
-    flag.Parse()
-    if *prompt == "" {
-        log.Fatalln("no prompt provided")
-    }
-    opt, cErr := options.LoadConfig(*config)
-    if cErr != nil {
-        log.Fatalln(cErr)
-    }
-    opt.Prompt = *prompt
-    opt.Interactive = false
-    opt.InteractiveFirst = false
+	config := flag.String("c", "", "Provide a path to the config file")
+	prompt := flag.String("p", "", "Provide a prompt")
+	flag.Parse()
+	if *prompt == "" {
+		log.Fatalln("no prompt provided")
+	}
+	opt, cErr := options.LoadConfig(*config)
+	if cErr != nil {
+		log.Fatalln(cErr)
+	}
+	opt.Prompt = *prompt
+	opt.Interactive = false
+	opt.InteractiveFirst = false
 
-    // Initialize Llama
-    l, lErr := llama.NewGoLlama(opt)
-    if lErr != nil {
-        log.Fatal(lErr)
-    }
-    defer l.Free()
+	// Initialize Llama
+	l, lErr := llama.NewGoLlama(opt)
+	if lErr != nil {
+		log.Fatal(lErr)
+	}
+	defer l.Free()
 
-    p := predictor.NewPredictor(l)
-    defer p.Free()
+	p := predictor.NewPredictor(l)
+	defer p.Free()
 
-    p.SetOutputCallback(func(token string) {
-        fmt.Printf("%s", token)
-    })
-    p.SetEndOutputCallback(func() {
-        fmt.Printf("%s", examples.AnsiColorReset)
-    })
-    fmt.Printf("%s", examples.AnsiColorYellow)
-    if ok := p.Predict(); ok != nil {
-        log.Fatal(ok)
-    }
+	p.SetOutputCallback(func(token string) {
+		fmt.Printf("%s", token)
+	})
+	p.SetEndOutputCallback(func() {
+		fmt.Printf("%s", examples.AnsiColorReset)
+	})
+	fmt.Printf("%s", examples.AnsiColorYellow)
+	if ok := p.Predict(); ok != nil {
+		log.Fatal(ok)
+	}
 }
 
 /*
@@ -70,7 +70,7 @@ func (p *Predictor) Predict() error {
 	log.Println("Start prediction loop")
 	fmt.Printf("%s", examples.AnsiColorYellow)
 	var err error
-	for !p.IsExiting && (remain != 0 && !isAntiPrompt) {
+	for !p.Exit && (remain != 0 && !isAntiPrompt) {
 		if len(emb) > 0 {
 			past, err = p.DecodeInBatches(emb, past, batchSize)
 			if err != nil {

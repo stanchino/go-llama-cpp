@@ -5,24 +5,19 @@ package tokenizer
 #cgo CXXFLAGS: -std=c++11
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
-#include "../options/options.h"
 #include "../llama/llama.h"
 #include "tokenizer.h"
 */
 import "C"
-import (
-	"github.com/stanchino/go-llama-cpp/pkg/llama"
-	"unsafe"
-)
+import "unsafe"
 
 type Tokenizer struct {
-	*llama.GoLlama
+	State unsafe.Pointer
 }
 
-func NewTokenizer(l *llama.GoLlama) *Tokenizer {
+func NewTokenizer(state unsafe.Pointer) *Tokenizer {
 	return &Tokenizer{
-		GoLlama: l,
+		State: state,
 	}
 }
 
@@ -50,7 +45,6 @@ func (t *Tokenizer) Tokenize(text string, special ...bool) []int {
 		C.bool(addSpecial),
 		C.bool(parseSpecial))
 	return t.ToSlice(unsafe.Pointer(&tokenList))
-
 }
 
 func (t *Tokenizer) ToSlice(tokenListPtr unsafe.Pointer) []int {
@@ -86,4 +80,8 @@ func (t *Tokenizer) ToString(tokens []int) string {
 	}
 	str := C.go_llama_token_to_piece((*C.struct_go_llama_state)(t.State), &result[0], C.uint(len(tokens)))
 	return C.GoString(str)
+}
+
+func (t *Tokenizer) IsEog(id int) bool {
+	return bool(C.go_llama_token_is_eog((*C.go_llama_state)(t.State), C.int(id)))
 }
