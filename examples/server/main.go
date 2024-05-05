@@ -8,17 +8,24 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 func main() {
+	f, err := os.OpenFile("go-llama.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
 	config := flag.String("c", "", "Provide a path to the config file")
 	flag.Parse()
 	opt, cErr := options.LoadConfig(*config)
 	if cErr != nil {
 		log.Fatal(cErr)
 	}
-	opt.Interactive = false
-	opt.InteractiveFirst = false
+	opt.Interactive = true
+	opt.InteractiveFirst = true
 	l, lErr := llama.NewGoLlama(opt)
 	if lErr != nil {
 		log.Fatal(lErr)
@@ -27,27 +34,36 @@ func main() {
 
 	p := predictor.NewPredictor(l)
 
+	in := make(chan string)
+	p.SetInputCallback(func() string {
+		return <-in
+	})
+	go func() {
+		if ok := p.Predict(); ok != nil {
+			log.Fatal(ok)
+		}
+	}()
 	http.HandleFunc("/chat", func(w http.ResponseWriter, req *http.Request) {
-		defer req.Body.Close()
+		defer func() {
+			if ok := req.Body.Close(); ok != nil {
+				log.Fatal(ok)
+			}
+		}()
 		input, _ := io.ReadAll(req.Body)
 		out := make(chan string)
-		p.InitState()
 		p.SetOutputCallback(func(token string) {
 			out <- token
 		})
 		p.SetEndOutputCallback(func() {
 			close(out)
 		})
-		go func(prompt string) {
-			if ok := p.WithPrompt(prompt).Predict(); ok != nil {
+		in <- string(input)
+		for v := range out {
+			if _, ok := io.WriteString(w, v); ok != nil {
 				log.Fatal(ok)
 			}
-		}(string(input))
-		for v := range out {
-			io.WriteString(w, v)
 			w.(http.Flusher).Flush()
 		}
-		p.Free()
 	})
 	if err := http.ListenAndServe(":8090", nil); err != nil {
 		log.Fatal(err)

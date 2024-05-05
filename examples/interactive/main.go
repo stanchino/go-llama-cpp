@@ -13,6 +13,12 @@ import (
 )
 
 func main() {
+	f, err := os.OpenFile("go-llama.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
 	config := flag.String("c", "", "Provide a path to the config file")
 	flag.Parse()
 	opt, cErr := options.LoadConfig(*config)
@@ -36,7 +42,7 @@ func main() {
 	p.SetOutputCallback(func(token string) {
 		result <- token
 	})
-	p.SetEndOutputCallback(func() {
+	p.SetExitCallback(func() {
 		close(result)
 	})
 	scanner := bufio.NewScanner(os.Stdin)

@@ -87,10 +87,11 @@ struct go_llama_state *go_llama_init(void *params_ptr) {
 }
 */
 // context warmup
-void go_llama_synchronize(struct go_llama_state *state) {
+void go_llama_warmup(struct go_llama_state * state) {
+    std::vector<llama_token> tmp = { llama_token_bos(state->model), llama_token_eos(state->model), };
+    llama_decode(state->ctx, llama_batch_get_one(tmp.data(), std::min(tmp.size(), (size_t) state->params->n_batch), 0, 0));
+    llama_kv_cache_clear(state->ctx);
     llama_synchronize(state->ctx);
-}
-void go_llama_reset_timings(struct go_llama_state *state) {
     llama_reset_timings(state->ctx);
 }
 // cache

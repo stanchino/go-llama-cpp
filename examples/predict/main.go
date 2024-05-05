@@ -8,9 +8,16 @@ import (
 	"github.com/stanchino/go-llama-cpp/pkg/options"
 	"github.com/stanchino/go-llama-cpp/pkg/predictor"
 	"log"
+	"os"
 )
 
 func main() {
+	f, err := os.OpenFile("go-llama.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
+	defer f.Close()
+	log.SetOutput(f)
 	config := flag.String("c", "", "Provide a path to the config file")
 	prompt := flag.String("p", "", "Provide a prompt")
 	flag.Parse()
@@ -38,7 +45,7 @@ func main() {
 	p.SetOutputCallback(func(token string) {
 		fmt.Printf("%s", token)
 	})
-	p.SetEndOutputCallback(func() {
+	p.SetExitCallback(func() {
 		fmt.Printf("%s", examples.AnsiColorReset)
 	})
 	fmt.Printf("%s", examples.AnsiColorYellow)

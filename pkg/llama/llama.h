@@ -49,8 +49,7 @@ int go_llama_sampling_sample(struct go_llama_state * state);
 void go_llama_sampling_accept(struct go_llama_state * state, int id, bool apply_grammar);
 tokens_list * go_llama_sampling_prev(struct go_llama_state * state);
 // context warmup
-void go_llama_synchronize(struct go_llama_state *state);
-void go_llama_reset_timings(struct go_llama_state *state);
+void go_llama_warmup(struct go_llama_state * state);
 // state
 void *go_llama_params_to_gpt_params(void *params_ptr);
 void go_llama_backend_init();

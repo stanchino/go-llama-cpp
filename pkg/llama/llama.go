@@ -50,17 +50,15 @@ func NewGoLlama(opt *options.Options) (*GoLlama, error) {
 		Tokenizer: tokenizer.NewTokenizer(s),
 	}
 
-	l.WarmUp()
+	if l.Options.Warmup {
+		l.WarmUp()
+	}
 	return l, nil
 }
 
 func (l *GoLlama) WarmUp() {
-	log.Println("warming up the model with an empty ru")
-	tmp := []int{l.Tokenizer.TokenBos(), l.Tokenizer.TokenEos()}
-	_ = l.Decoder.DecodeBatch(l.Tokenizer.ToTokensList(tmp), len(tmp), 0, 0)
-	l.Cache.Clear()
-	C.go_llama_synchronize((*C.go_llama_state)(l.State))
-	C.go_llama_reset_timings((*C.go_llama_state)(l.State))
+	log.Println("warming up the model with an empty run")
+	C.go_llama_warmup((*C.go_llama_state)(l.State))
 }
 
 func (l *GoLlama) StringifyTokens(tokens []int) string {
@@ -77,7 +75,7 @@ func (l *GoLlama) StringifyTokens(tokens []int) string {
 	return fmt.Sprintf("[%s]", result)
 }
 
-func (l *GoLlama) DecodeInBatches(emb []int, past int, batchSize int) (int, error) {
+func (l *GoLlama) DecodeInBatches(emb []int, past *int, batchSize int) error {
 	// log.Println("predict in batches, tokens: ", l.StringifyTokens(emb))
 	embLen := len(emb)
 	maxEmbSize := l.Options.ContextSize - 4
@@ -92,21 +90,21 @@ func (l *GoLlama) DecodeInBatches(emb []int, past int, batchSize int) (int, erro
 		// if we run out of context:
 		// - take the n_keep first tokens from the original prompt (via p_state->n_past)
 		// - take half of the last (p_state.n_ctx - n_keep) tokens and recompute the logits in batches
-		if past+embLen > l.Options.ContextSize {
+		if *past+embLen > l.Options.ContextSize {
 			if l.Options.NumPredict == -2 {
 				log.Printf("context full and n_predict == -%d => stopping\n", l.Options.NumPredict)
-				return past, errors.New("context full")
+				return errors.New("context full")
 			}
-			numLeft := past - l.Options.NumKeep
+			numLeft := *past - l.Options.NumKeep
 			numDiscard := numLeft / 2
 
 			log.Printf("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
 				past, numLeft, l.Options.ContextSize, l.Options.NumKeep, numDiscard)
 
 			l.Cache.Remove(0, l.Options.NumKeep, l.Options.NumKeep+numDiscard)
-			l.Cache.Add(0, l.Options.NumKeep+numDiscard, past, -numDiscard)
+			l.Cache.Add(0, l.Options.NumKeep+numDiscard, *past, -numDiscard)
 
-			past -= numDiscard
+			*past -= numDiscard
 			log.Printf("after swap: n_past = %d, embd: %s\n", past, l.StringifyTokens(emb))
 		}
 	} else {
@@ -116,27 +114,27 @@ func (l *GoLlama) DecodeInBatches(emb []int, past int, batchSize int) (int, erro
 		grpAttnId := 0
 		grpAttnNum := l.Options.GroupAttnFactor
 		grpAttnWeight := l.Options.GroupAttnWeight
-		for past >= grpAttnId+grpAttnWeight {
+		for *past >= grpAttnId+grpAttnWeight {
 			ib := (grpAttnNum * grpAttnId) / grpAttnWeight
 			bd := (grpAttnWeight / grpAttnNum) * (grpAttnNum - 1)
 			dd := (grpAttnWeight / grpAttnNum) - ib*bd - grpAttnWeight
 
 			log.Printf("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", grpAttnId, past, ib*bd, grpAttnId+ib*bd,
-				past+ib*bd)
+				*past+ib*bd)
 			log.Printf("div:   [%6d, %6d] / %6d -> [%6d, %6d]\n", grpAttnId+ib*bd, grpAttnId+ib*bd+grpAttnWeight, grpAttnNum,
 				(grpAttnId+ib*bd)/grpAttnNum, (grpAttnId+ib*bd+grpAttnWeight)/grpAttnNum)
-			log.Printf("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", grpAttnId+ib*bd+grpAttnWeight, past+ib*bd, dd,
-				grpAttnId+ib*bd+grpAttnWeight+dd, past+ib*bd+dd)
+			log.Printf("shift: [%6d, %6d] + %6d -> [%6d, %6d]\n", grpAttnId+ib*bd+grpAttnWeight, *past+ib*bd, dd,
+				grpAttnId+ib*bd+grpAttnWeight+dd, *past+ib*bd+dd)
 
-			l.Cache.Add(0, grpAttnId, past, ib*bd)
+			l.Cache.Add(0, grpAttnId, *past, ib*bd)
 			l.Cache.Div(0, grpAttnId+ib*bd, grpAttnId+ib*bd+grpAttnWeight, grpAttnNum)
-			l.Cache.Add(0, grpAttnId+ib*bd+grpAttnWeight, past+ib*bd, dd)
+			l.Cache.Add(0, grpAttnId+ib*bd+grpAttnWeight, *past+ib*bd, dd)
 
-			past -= bd
+			*past -= bd
 
 			grpAttnId += grpAttnWeight / grpAttnNum
 
-			log.Printf("\np_state->n_past_old = %d, p_state->n_past = %d, ga_i = %d\n\n", past+bd, past, grpAttnId)
+			log.Printf("\np_state->n_past_old = %d, p_state->n_past = %d, ga_i = %d\n\n", *past+bd, past, grpAttnId)
 		}
 	}
 	for i := 0; i < embLen; i += batchSize {
@@ -144,13 +142,13 @@ func (l *GoLlama) DecodeInBatches(emb []int, past int, batchSize int) (int, erro
 		if eval > batchSize {
 			eval = batchSize
 		}
-		err := l.Decoder.DecodeBatch(l.Tokenizer.ToTokensList(emb), i, eval, past)
+		err := l.Decoder.DecodeBatch(l.Tokenizer.ToTokensList(emb), i, eval, *past)
 		if err != nil {
-			return past, err
+			return err
 		}
-		past += eval
+		*past += eval
 	}
-	return past, nil
+	return nil
 }
 
 func (l *GoLlama) Free() {

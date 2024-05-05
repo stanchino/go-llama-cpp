@@ -41,6 +41,7 @@ type Options struct {
 	Template         string   `json:"template,omitempty" yaml:"template"`
 	AntiPrompts      []string `json:"antiPrompts,omitempty" yaml:"antiPrompts"`
 	EndOfTextPrompts []string `json:"endOfTextPrompts,omitempty" yaml:"endOfTextPrompts"`
+	Warmup           bool     `default:"true" json:"warmup,omitempty" yaml:"warmup"`
 }
 
 func LoadConfig(configFile string) (*Options, error) {

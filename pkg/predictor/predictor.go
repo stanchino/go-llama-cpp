@@ -19,6 +19,7 @@ type Predictor struct {
 	outputCallback    func(string)
 	inputCallback     func() string
 	endOutputCallback func()
+	exitCallback      func()
 	reading           chan string
 }
 
@@ -59,6 +60,10 @@ func (p *Predictor) SetEndOutputCallback(cb func()) {
 	p.endOutputCallback = cb
 }
 
+func (p *Predictor) SetExitCallback(cb func()) {
+	p.exitCallback = cb
+}
+
 func (p *Predictor) SetInputCallback(cb func() string) {
 	if p.Options.InteractiveFirst {
 		fmt.Println(
@@ -80,12 +85,6 @@ func (p *Predictor) Predict() error {
 	if p.GoLlama.Options.Interactive && p.inputCallback == nil {
 		return errors.New("no input callback provided in interactive mode")
 	}
-	f, err := os.OpenFile("go-llama.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatalf("error opening file: %v", err)
-	}
-	defer f.Close()
-	log.SetOutput(f)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT)
 	go p.SigHandler(c)
@@ -113,8 +112,7 @@ func (p *Predictor) Predict() error {
 	log.Printf("Start prediction loop, contextSize:%d, eogTokens: %s\n", p.Options.ContextSize, p.StringifyTokens(p.eogTokens))
 	for !p.Exit && ((remain != 0 && !isAntiPrompt) || !p.Options.Interactive) {
 		if len(emb) > 0 {
-			past, err = p.DecodeInBatches(emb, past, batchSize)
-			if err != nil {
+			if err := p.DecodeInBatches(emb, &past, batchSize); err != nil {
 				log.Println(err)
 				return err
 			}
@@ -158,6 +156,7 @@ func (p *Predictor) Predict() error {
 				log.Println("Waiting for input...")
 				p.Sampling.Reset()
 				p.IsInteracting = false
+				p.EndOutputCallback()
 				if p.Options.InputPrefixBos {
 					embIn = append(embIn, p.Tokenizer.TokenBos())
 				}
@@ -196,7 +195,7 @@ func (p *Predictor) Predict() error {
 		}
 	}
 	p.Sampling.Reset()
-	p.EndOutputCallback()
+	p.ExitCallback()
 	return nil
 }
 
@@ -207,6 +206,9 @@ func (p *Predictor) OutputCallback(token string) {
 }
 
 func (p *Predictor) IsEog(id int) bool {
+	if p.Tokenizer.IsEog(id) {
+		return true
+	}
 	if len(p.eogTokens) > 0 {
 		for _, v := range p.eogTokens {
 			if v == id {
@@ -236,6 +238,12 @@ func (p *Predictor) InputCallback() string {
 func (p *Predictor) EndOutputCallback() {
 	if p.endOutputCallback != nil {
 		p.endOutputCallback()
+	}
+}
+
+func (p *Predictor) ExitCallback() {
+	if p.exitCallback != nil {
+		p.exitCallback()
 	}
 }
 
