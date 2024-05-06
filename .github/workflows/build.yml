@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        platform: [amd64, arm64]
     steps:
     - uses: actions/setup-go@v5.0.0
       with:
@@ -46,8 +46,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/libllama_linux_${{ matrix.arch }}.a
-        name: libllama_linux_${{ matrix.arch }}.a
+        path: lib/libllama_linux_${{ matrix.platform }}.a
+        name: libllama_linux_${{ matrix.platform }}.a
   release:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
