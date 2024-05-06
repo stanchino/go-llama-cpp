@@ -27,8 +27,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/libllama_arm64.a
-        name: libllama_arm64.a
+        path: lib/libllama_osx_arm64.a
+        name: libllama_osx_arm64.a
   ubuntu-latest:
     runs-on: ubuntu-latest
     steps:
@@ -43,8 +43,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/libllama_x86_64.a
-        name: libllama_x86_64.a
+        path: lib/libllama_linux_amd64.a
+        name: libllama_linux_amd64.a
   release:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
@@ -59,11 +59,11 @@ jobs:
       run: make includes
     - uses: actions/download-artifact@v4
       with:
-        name: libllama_arm64.a
+        name: libllama_osx_arm64.a
         path: lib
     - uses: actions/download-artifact@v4
       with:
-        name: libllama_x86_64.a
+        name: libllama_linux_amd64.a
         path: lib
     - uses: EndBug/add-and-commit@v9
       with:

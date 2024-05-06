@@ -23,8 +23,8 @@ func NewSampling(state unsafe.Pointer) *Sampling {
 }
 
 func (s *Sampling) Init() {
-	state := (*C.go_llama_state)(s.State)
-	state.ctx_sampling = C.go_llama_sampling_init((*C.go_llama_state)(s.State))
+	C.go_llama_sampling_init((*C.go_llama_state)(s.State))
+	C.go_llama_sampling_info((*C.go_llama_state)(s.State))
 }
 func (s *Sampling) Sample() int {
 	return int(C.go_llama_sampling_sample((*C.go_llama_state)(s.State)))

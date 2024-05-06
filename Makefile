@@ -22,17 +22,29 @@ ifndef UNAME_M
 UNAME_M := $(shell uname -m)
 endif
 
+ifeq ($(UNAME_M),x86_64)
+  UNAME_M := "amd64"
+endif
+
+ifeq ($(UNAME_M),aarch64)
+  UNAME_M := "arm64"
+endif
+
 LLAMA_METAL_EMBED=0
 ifeq ($(UNAME_S),Darwin)
+	UNAME_S := "osx"
 	ifndef LLAMA_NO_METAL
 		EXTRA_LLAMA_TARGETS += ggml-metal-embed.o
 		LAMA_METAL_EMBED=1
 	endif
 endif
 
+PLATFORM := `echo $(UNAME_S) | tr '[:upper:]' '[:lower:]'`
+ARCH := `echo $(UNAME_M) | tr '[:upper:]' '[:lower:]'`
+
 libllama.a:
 	LLAMA_METAL_EMBED_LIBRARY=${LAMA_METAL_EMBED} $(MAKE) -C llama.cpp libllama.a $(EXTRA_LLAMA_TARGETS)
-	cp llama.cpp/libllama.a lib/libllama_${UNAME_M}.a
+	cp llama.cpp/libllama.a lib/libllama_${PLATFORM}_${ARCH}.a
 
 build: libllama.a includes
 	go build ./...
@@ -44,8 +56,6 @@ includes/%: %
 
 rebuild: clean build
 clean:
-	rm -rf lib/*.o
-	rm -rf lib/*.a
 	rm -rf includes/*.h
 	$(MAKE) -C llama.cpp clean
 

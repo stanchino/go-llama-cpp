@@ -4,8 +4,10 @@ package llama
 #cgo CFLAGS: -std=c11
 #cgo CXXFLAGS: -std=c++11
 #cgo LDFLAGS: -L${SRCDIR}/../../lib
-#cgo darwin,arm64 LDFLAGS: -lllama_arm64 -framework Accelerate -framework Foundation -framework Metal -framework MetalKit -framework MetalPerformanceShaders
-#cgo linux,amd64 LDFLAGS: -lllama_x86_64 -lpthread
+#cgo darwin,arm64 LDFLAGS: -lllama_osx_arm64 -framework Accelerate -framework Foundation -framework Metal -framework MetalKit -framework MetalPerformanceShaders
+#cgo linux,amd64 LDFLAGS: -lllama_linux_amd64 -lpthread
+#cgo linux,aarch64 LDFLAGS: -lllama_linux_arm64 -lpthread
+#cgo linux,arm64 LDFLAGS: -lllama_linux_arm64 -lpthread
 #include <stdlib.h>
 #include <stdbool.h>
 #include "llama.h"
@@ -50,6 +52,7 @@ func NewGoLlama(opt *options.Options) (*GoLlama, error) {
 		Tokenizer: tokenizer.NewTokenizer(s),
 	}
 
+	C.go_llama_system_info((*C.go_llama_state)(s))
 	if l.Options.Warmup {
 		l.WarmUp()
 	}

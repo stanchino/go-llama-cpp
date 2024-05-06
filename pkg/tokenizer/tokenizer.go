@@ -8,7 +8,9 @@ package tokenizer
 #include "../llama/llama.h"
 */
 import "C"
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type Tokenizer struct {
 	State unsafe.Pointer
@@ -25,7 +27,7 @@ func (t *Tokenizer) TokenBos() int {
 }
 
 func (t *Tokenizer) TokenEos() int {
-	return int(C.go_llama_token_еos((*C.struct_go_llama_state)(t.State)))
+	return int(C.go_llama_token_eos((*C.struct_go_llama_state)(t.State)))
 }
 
 func (t *Tokenizer) AddBos() bool {
@@ -81,8 +83,8 @@ func (t *Tokenizer) ToString(tokens []int) string {
 	for i, t := range tokens {
 		result[i] = C.go_llama_token(t)
 	}
-	str := C.go_llama_token_to_piece((*C.struct_go_llama_state)(t.State), &result[0], C.uint(len(tokens)))
-	return C.GoString(str)
+	res := C.go_llama_token_to_piece((*C.struct_go_llama_state)(t.State), &result[0], C.uint(len(tokens)))
+	return C.GoStringN(res.data, C.int(res.size))
 }
 
 func (t *Tokenizer) IsEog(id int) bool {
