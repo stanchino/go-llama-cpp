@@ -31,6 +31,9 @@ jobs:
         name: libllama_osx_arm64.a
   ubuntu-latest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
     steps:
     - uses: actions/setup-go@v5.0.0
       with:
@@ -43,8 +46,8 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v4
       with:
-        path: lib/libllama_linux_amd64.a
-        name: libllama_linux_amd64.a
+        path: lib/libllama_linux_${{ matrix.arch }}.a
+        name: libllama_linux_${{ matrix.arch }}.a
   release:
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
@@ -64,6 +67,10 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         name: libllama_linux_amd64.a
+        path: lib
+    - uses: actions/download-artifact@v4
+      with:
+        name: libllama_linux_arm64.a
         path: lib
     - uses: EndBug/add-and-commit@v9
       with:
